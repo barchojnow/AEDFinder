@@ -60,6 +60,7 @@ import json
 import math
 import shutil
 import sys
+import urllib.error
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
@@ -90,7 +91,10 @@ SEARCH_RADIUS_M = 2000
 # Mean Earth radius, same value GeoMath.mc uses for Haversine.
 EARTH_RADIUS_M = 6371000.0
 
-COUNTRY_URL = "https://api.openaedmap.org/api/v1/countries/{code}.geojson"
+# The API is served from the site's own host. `api.openaedmap.org` looks
+# like the obvious guess and is what this originally used - it resolves,
+# returns nothing, and cost one red CI run to notice.
+COUNTRY_URL = "https://openaedmap.org/api/v1/countries/{code}.geojson"
 
 # Identify the project to OpenAEDMap's operators, as any non-browser
 # client should.
@@ -297,14 +301,48 @@ def fetch_country(code: str, cache: Path | None) -> dict:
     url = COUNTRY_URL.format(code=code.upper())
     print(f"downloading {url}")
     request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-    with urllib.request.urlopen(request, timeout=300) as response:
-        payload = response.read()
+
+    # Every failure here is reported with the URL that produced it. This
+    # step runs unattended at 03:40 and is the only one that depends on
+    # someone else's server, so the difference between "HTTP 404 for
+    # <url>" and a bare traceback is the difference between fixing it in
+    # a minute and bisecting a workflow.
+    try:
+        with urllib.request.urlopen(request, timeout=300) as response:
+            payload = response.read()
+    except urllib.error.HTTPError as exc:
+        raise SystemExit(
+            f"OpenAEDMap returned HTTP {exc.code} ({exc.reason}) for {url}\n"
+            f"  the country code may be wrong, or the API may have moved"
+        ) from exc
+    except urllib.error.URLError as exc:
+        raise SystemExit(
+            f"could not reach {url}: {exc.reason}\n"
+            f"  check the host resolves - the API lives on openaedmap.org, "
+            f"not on an api. subdomain"
+        ) from exc
+
     print(f"  {len(payload) / 1_048_576:.1f} MB")
+
+    try:
+        collection = json.loads(payload)
+    except json.JSONDecodeError as exc:
+        raise SystemExit(
+            f"{url} did not return JSON ({exc})\n"
+            f"  first bytes: {payload[:120]!r}"
+        ) from exc
+
+    if not isinstance(collection, dict) or "features" not in collection:
+        raise SystemExit(
+            f"{url} returned JSON that is not a FeatureCollection\n"
+            f"  top-level keys: "
+            f"{list(collection)[:10] if isinstance(collection, dict) else type(collection)}"
+        )
 
     if cache:
         cache.parent.mkdir(parents=True, exist_ok=True)
         cache.write_bytes(payload)
-    return json.loads(payload)
+    return collection
 
 
 def build(country: str, out_dir: Path, cache: Path | None) -> dict:

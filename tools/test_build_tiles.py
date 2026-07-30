@@ -26,6 +26,11 @@ import pytest
 
 import build_tiles as bt
 
+# Reserved by RFC 2606 and guaranteed never to resolve, so the download
+# failure tests are hermetic - they don't reach the network and can't be
+# broken by a resolver that returns a wildcard for typos.
+UNRESOLVABLE = "https://openaedmap.invalid/api/v1/countries/{code}.geojson"
+
 # Slot names for the wire format, mirroring AedClient.parseEntries on the
 # watch. Written out so that reordering the layout breaks these tests
 # loudly instead of silently reinterpreting every field.
@@ -163,6 +168,43 @@ def test_rejects_features_without_usable_geometry(broken):
 def test_rejects_coordinates_outside_the_world(feature):
     assert bt.to_entry(feature(931.0, 21.0)) is None
     assert bt.to_entry(feature(52.0, 999.0)) is None
+
+
+# --- the download ----------------------------------------------------------
+
+# This step runs unattended at 03:40 against someone else's server, and
+# it is the only part of the pipeline that can fail for reasons outside
+# this repository. The first live run died on an `api.` subdomain that
+# does not exist, and said so in forty lines of urllib traceback with
+# the URL buried in the middle. These pin the diagnosis to the top.
+
+def test_reports_an_unreachable_host_with_the_url(monkeypatch, tmp_path):
+    monkeypatch.setattr(bt, "COUNTRY_URL", UNRESOLVABLE)
+
+    with pytest.raises(SystemExit) as exc:
+        bt.fetch_country("pl", None)
+
+    message = str(exc.value)
+    assert "openaedmap.invalid" in message, "the failure hid the URL it tried"
+    assert "openaedmap.org" in message, (
+        "the hint naming the real host is what turns this from a stack "
+        "trace into a fix"
+    )
+
+
+def test_a_cached_download_never_touches_the_network(tmp_path, monkeypatch):
+    # The --cache flag exists so a local rebuild doesn't re-download 15 MB
+    # each time. If it ever stopped short-circuiting, that politeness
+    # would silently become a per-run download.
+    monkeypatch.setattr(bt, "COUNTRY_URL", UNRESOLVABLE)
+    cache = tmp_path / "pl.geojson"
+    cache.write_text(
+        json.dumps({"type": "FeatureCollection", "features": []}),
+        encoding="utf-8",
+    )
+
+    # Would raise SystemExit if it tried to resolve the host.
+    assert bt.fetch_country("pl", cache)["features"] == []
 
 
 # --- the coverage guarantee -------------------------------------------------
