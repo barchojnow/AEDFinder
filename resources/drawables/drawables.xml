@@ -1,0 +1,7 @@
+<drawables xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://developer.garmin.com/downloads/connect-iq/resources.xsd">
+    <!-- Fallback launcher icon. Per-product sizes live in variants/
+         and are mapped in monkey.jungle; the last resourcePath wins, so
+         a variant overrides this. There is no LogoIcon: the in-app mark
+         is drawn by AedLogo.mc, which needs no bitmap and no variants. -->
+    <bitmap id="LauncherIcon" filename="launcher_icon.png" dithering="none" />
+</drawables>

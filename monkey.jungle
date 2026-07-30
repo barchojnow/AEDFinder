@@ -1,0 +1,100 @@
+project.manifest = manifest.xml
+
+# Per-product launcher icon size.
+#
+# This is the whole of the device-variant mapping, and it is much
+# shorter than ZabkaFinder's because the in-app logo is no longer a
+# bitmap: AedLogo.mc draws it with primitives, so it scales to every
+# screen for free and needs no variant at all. Only the launcher icon
+# still has to be a real image, since Garmin renders that one itself.
+#
+# The variants/ folders live OUTSIDE resources/ on purpose - the
+# resource compiler scans every resourcePath entry recursively and
+# compiles all of it for every device, so opt-in variants must be
+# mapped explicitly here. Each variant path is appended AFTER the base
+# path, so its LauncherIcon overrides the fallback in resources/.
+#
+# Sizes come from Garmin's per-product specs and do not follow screen
+# size: a 390 px Venu wants 60 px, a 390 px Forerunner 165 wants 54.
+# Regenerate the PNGs with tools/make_icons.py after any change.
+
+# --- 35 px --------------------------------------------------------
+fr55.resourcePath = $(fr55.resourcePath);variants/icon-35
+
+# --- 36 px --------------------------------------------------------
+fenix5s.resourcePath = $(fenix5s.resourcePath);variants/icon-36
+
+# --- 40 px --------------------------------------------------------
+enduro.resourcePath = $(enduro.resourcePath);variants/icon-40
+enduro3.resourcePath = $(enduro3.resourcePath);variants/icon-40
+fenix5.resourcePath = $(fenix5.resourcePath);variants/icon-40
+fenix5plus.resourcePath = $(fenix5plus.resourcePath);variants/icon-40
+fenix5splus.resourcePath = $(fenix5splus.resourcePath);variants/icon-40
+fenix5x.resourcePath = $(fenix5x.resourcePath);variants/icon-40
+fenix5xplus.resourcePath = $(fenix5xplus.resourcePath);variants/icon-40
+fenix6.resourcePath = $(fenix6.resourcePath);variants/icon-40
+fenix6pro.resourcePath = $(fenix6pro.resourcePath);variants/icon-40
+fenix6s.resourcePath = $(fenix6s.resourcePath);variants/icon-40
+fenix6spro.resourcePath = $(fenix6spro.resourcePath);variants/icon-40
+fenix6xpro.resourcePath = $(fenix6xpro.resourcePath);variants/icon-40
+fenix7.resourcePath = $(fenix7.resourcePath);variants/icon-40
+fenix7pro.resourcePath = $(fenix7pro.resourcePath);variants/icon-40
+fenix7pronowifi.resourcePath = $(fenix7pronowifi.resourcePath);variants/icon-40
+fenix7s.resourcePath = $(fenix7s.resourcePath);variants/icon-40
+fenix7spro.resourcePath = $(fenix7spro.resourcePath);variants/icon-40
+fenix7x.resourcePath = $(fenix7x.resourcePath);variants/icon-40
+fenix7xpro.resourcePath = $(fenix7xpro.resourcePath);variants/icon-40
+fenix7xpronowifi.resourcePath = $(fenix7xpronowifi.resourcePath);variants/icon-40
+fenix8solar47mm.resourcePath = $(fenix8solar47mm.resourcePath);variants/icon-40
+fenix8solar51mm.resourcePath = $(fenix8solar51mm.resourcePath);variants/icon-40
+fr245.resourcePath = $(fr245.resourcePath);variants/icon-40
+fr245m.resourcePath = $(fr245m.resourcePath);variants/icon-40
+fr255.resourcePath = $(fr255.resourcePath);variants/icon-40
+fr255m.resourcePath = $(fr255m.resourcePath);variants/icon-40
+fr255s.resourcePath = $(fr255s.resourcePath);variants/icon-40
+fr255sm.resourcePath = $(fr255sm.resourcePath);variants/icon-40
+fr645.resourcePath = $(fr645.resourcePath);variants/icon-40
+fr645m.resourcePath = $(fr645m.resourcePath);variants/icon-40
+fr745.resourcePath = $(fr745.resourcePath);variants/icon-40
+fr935.resourcePath = $(fr935.resourcePath);variants/icon-40
+fr945.resourcePath = $(fr945.resourcePath);variants/icon-40
+fr945lte.resourcePath = $(fr945lte.resourcePath);variants/icon-40
+fr955.resourcePath = $(fr955.resourcePath);variants/icon-40
+
+# --- 54 px --------------------------------------------------------
+fr165.resourcePath = $(fr165.resourcePath);variants/icon-54
+fr165m.resourcePath = $(fr165m.resourcePath);variants/icon-54
+fr170.resourcePath = $(fr170.resourcePath);variants/icon-54
+fr170m.resourcePath = $(fr170m.resourcePath);variants/icon-54
+fr57042mm.resourcePath = $(fr57042mm.resourcePath);variants/icon-54
+fr70.resourcePath = $(fr70.resourcePath);variants/icon-54
+venu441mm.resourcePath = $(venu441mm.resourcePath);variants/icon-54
+
+# --- 60 px --------------------------------------------------------
+epix2.resourcePath = $(epix2.resourcePath);variants/icon-60
+epix2pro42mm.resourcePath = $(epix2pro42mm.resourcePath);variants/icon-60
+epix2pro47mm.resourcePath = $(epix2pro47mm.resourcePath);variants/icon-60
+epix2pro51mm.resourcePath = $(epix2pro51mm.resourcePath);variants/icon-60
+fenix843mm.resourcePath = $(fenix843mm.resourcePath);variants/icon-60
+fenixe.resourcePath = $(fenixe.resourcePath);variants/icon-60
+fr265.resourcePath = $(fr265.resourcePath);variants/icon-60
+fr265s.resourcePath = $(fr265s.resourcePath);variants/icon-60
+venu.resourcePath = $(venu.resourcePath);variants/icon-60
+venud.resourcePath = $(venud.resourcePath);variants/icon-60
+
+# --- 61 px --------------------------------------------------------
+venu2s.resourcePath = $(venu2s.resourcePath);variants/icon-61
+
+# --- 65 px --------------------------------------------------------
+fenix847mm.resourcePath = $(fenix847mm.resourcePath);variants/icon-65
+fenix8pro47mm.resourcePath = $(fenix8pro47mm.resourcePath);variants/icon-65
+fr57047mm.resourcePath = $(fr57047mm.resourcePath);variants/icon-65
+fr965.resourcePath = $(fr965.resourcePath);variants/icon-65
+fr970.resourcePath = $(fr970.resourcePath);variants/icon-65
+venu445mm.resourcePath = $(venu445mm.resourcePath);variants/icon-65
+
+# --- 70 px --------------------------------------------------------
+venu2.resourcePath = $(venu2.resourcePath);variants/icon-70
+venu2plus.resourcePath = $(venu2plus.resourcePath);variants/icon-70
+venu3.resourcePath = $(venu3.resourcePath);variants/icon-70
+venu3s.resourcePath = $(venu3s.resourcePath);variants/icon-70

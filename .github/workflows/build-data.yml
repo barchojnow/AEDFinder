@@ -1,0 +1,91 @@
+name: Build AED tiles
+
+# Rebuilds the static tile set from OpenAEDMap and publishes it to
+# GitHub Pages. The tiles are NEVER committed: they are uploaded as a
+# Pages artifact and deployed straight from there. Committing a few
+# thousand regenerated JSON files every night would grow the repository
+# without bound and make every diff useless, and nothing needs their
+# history - the authoritative record is OpenStreetMap.
+
+on:
+  schedule:
+    # 03:40 UTC daily. AEDs are added to OSM steadily but never move in
+    # a hurry, so a day of staleness is invisible to users, and an
+    # off-peak hour is politer to OpenAEDMap's servers.
+    - cron: "40 3 * * *"
+  workflow_dispatch:
+  push:
+    branches: [main]
+    # Only when the generator itself changes - a watch-side commit has
+    # no effect on the data.
+    paths:
+      - "tools/build_tiles.py"
+      - ".github/workflows/build-data.yml"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never let two builds deploy at once; the newest data wins.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Verify grid math matches the watch
+        # Runs before the download: if the Python and Monkey C grids
+        # have drifted apart, the tiles would be published under keys
+        # the watch never requests, and every user would silently see
+        # "no AED nearby". Cheap check, catastrophic failure mode.
+        run: python tools/check_grid.py
+
+      - name: Install test dependencies
+        # pytest only. build_tiles.py and check_grid.py are themselves
+        # stdlib-only, so the two steps that actually produce the data
+        # would still run on a bare interpreter if this ever broke.
+        run: pip install -r requirements-dev.txt
+
+      - name: Test the generator and the guard
+        # test_build_tiles includes the coverage property test, which
+        # brute-forces the guarantee the single-request design rests on.
+        # test_check_grid breaks the grid on purpose, eight ways, and
+        # asserts the step above notices each one - a guard that cannot
+        # fail is indistinguishable in CI from one that works, right up
+        # until the day it matters.
+        #
+        # Runs before the download: there is no point fetching 15 MB to
+        # feed a generator already known to be broken.
+        run: pytest -q
+
+      - name: Build tiles
+        run: python tools/build_tiles.py --country pl --out _site
+
+      - name: Summarise
+        run: |
+          cat _site/meta.json
+          echo "cells: $(find _site -name '*.json' | wc -l)"
+          echo "size:  $(du -sh _site | cut -f1)"
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

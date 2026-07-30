@@ -1,0 +1,43 @@
+<strings xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://developer.garmin.com/downloads/connect-iq/resources.xsd">
+    <!-- Default language: English. Polish overrides live in
+         resources-pol/strings/strings.xml and are picked automatically
+         on watches set to Polish.
+
+         Everything here is kept short on purpose: it is read on a round
+         screen as small as 208 px, often while moving, and TextFit
+         shrinks the font until a string fits - so a long label doesn't
+         wrap, it just becomes unreadable. -->
+    <string id="AppName">AED Finder</string>
+
+    <string id="StatusSearchingGps">searching GPS...</string>
+    <string id="StatusSearchingAed">searching for AED...</string>
+    <string id="StatusNoAed">no AED nearby</string>
+    <string id="StatusNoPhone">connect your phone</string>
+    <string id="StatusNoInternet">no internet</string>
+    <string id="ErrorTimeout">error: timeout</string>
+    <string id="ErrorPrefix">error: </string>
+
+    <string id="MenuTitle">Nearest AEDs</string>
+    <!-- Used when OSM has no note about where the device hangs. -->
+    <string id="AedFallbackName">AED</string>
+
+    <string id="AwayTitle">Moving away! </string>
+    <string id="AwayHint">START: continue / MENU: list</string>
+
+    <!-- Shown when the data came from Storage rather than the network,
+         so the user knows these coordinates may be a day old before
+         running somewhere on them. -->
+    <string id="Offline">offline data</string>
+
+    <string id="DetailTitle">DEFIBRILLATOR</string>
+    <string id="AccessPublic">public access</string>
+    <string id="AccessCustomers">customers only</string>
+    <string id="AccessPrivate">restricted access</string>
+    <string id="AccessUnknown">access unknown</string>
+    <string id="Indoor">indoors</string>
+    <string id="Outdoor">outdoors</string>
+    <!-- Prefixed directly to the floor number, e.g. "floor 1". -->
+    <string id="Level">floor </string>
+    <string id="Hours">hours:</string>
+    <string id="UnknownLocation">no location details</string>
+</strings>

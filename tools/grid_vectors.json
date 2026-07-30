@@ -1,0 +1,166 @@
+{
+  "_comment": "Shared fixture for the tile grid. tools/check_grid.py asserts the Python generator reproduces these; source/tests/AedTilesTest.mc asserts the watch does too. Agreeing with the fixture on both sides is what makes the two implementations agree with each other.",
+  "cellDeg": 0.05,
+  "cases": [
+    {
+      "name": "warsaw-centre",
+      "lat": 52.2297,
+      "lon": 21.0122,
+      "cell": [
+        1044,
+        420
+      ],
+      "path": "pl/1044/420.json"
+    },
+    {
+      "name": "krakow-rynek",
+      "lat": 50.06143,
+      "lon": 19.93658,
+      "cell": [
+        1001,
+        398
+      ],
+      "path": "pl/1001/398.json"
+    },
+    {
+      "name": "gdansk-north",
+      "lat": 54.35205,
+      "lon": 18.64637,
+      "cell": [
+        1087,
+        372
+      ],
+      "path": "pl/1087/372.json"
+    },
+    {
+      "name": "zakopane-south",
+      "lat": 49.29899,
+      "lon": 19.94983,
+      "cell": [
+        985,
+        398
+      ],
+      "path": "pl/985/398.json"
+    },
+    {
+      "name": "szczecin-west",
+      "lat": 53.42894,
+      "lon": 14.55302,
+      "cell": [
+        1068,
+        291
+      ],
+      "path": "pl/1068/291.json"
+    },
+    {
+      "name": "hrubieszow-east",
+      "lat": 50.805,
+      "lon": 23.89,
+      "cell": [
+        1016,
+        477
+      ],
+      "path": "pl/1016/477.json"
+    },
+    {
+      "name": "boundary-exact-lat",
+      "lat": 52.25,
+      "lon": 21.0122,
+      "cell": [
+        1045,
+        420
+      ],
+      "path": "pl/1045/420.json"
+    },
+    {
+      "name": "boundary-exact-lon",
+      "lat": 52.2297,
+      "lon": 21.0,
+      "cell": [
+        1044,
+        420
+      ],
+      "path": "pl/1044/420.json"
+    },
+    {
+      "name": "boundary-exact-both",
+      "lat": 52.25,
+      "lon": 21.05,
+      "cell": [
+        1045,
+        421
+      ],
+      "path": "pl/1045/421.json"
+    },
+    {
+      "name": "boundary-just-below",
+      "lat": 52.2499999,
+      "lon": 20.9999999,
+      "cell": [
+        1044,
+        419
+      ],
+      "path": "pl/1044/419.json"
+    },
+    {
+      "name": "boundary-just-above",
+      "lat": 52.2500001,
+      "lon": 21.0000001,
+      "cell": [
+        1045,
+        420
+      ],
+      "path": "pl/1045/420.json"
+    },
+    {
+      "name": "boundary-multiple-20",
+      "lat": 51.0,
+      "lon": 20.0,
+      "cell": [
+        1020,
+        400
+      ],
+      "path": "pl/1020/400.json"
+    },
+    {
+      "name": "negative-lon",
+      "lat": 51.50722,
+      "lon": -0.1275,
+      "cell": [
+        1030,
+        -3
+      ],
+      "path": "pl/1030/-3.json"
+    },
+    {
+      "name": "negative-both",
+      "lat": -33.8688,
+      "lon": -151.2093,
+      "cell": [
+        -678,
+        -3025
+      ],
+      "path": "pl/-678/-3025.json"
+    },
+    {
+      "name": "origin",
+      "lat": 0.0,
+      "lon": 0.0,
+      "cell": [
+        0,
+        0
+      ],
+      "path": "pl/0/0.json"
+    },
+    {
+      "name": "just-below-origin",
+      "lat": -1e-07,
+      "lon": -1e-07,
+      "cell": [
+        -1,
+        -1
+      ],
+      "path": "pl/-1/-1.json"
+    }
+  ]
+}

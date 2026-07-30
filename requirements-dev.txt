@@ -1,0 +1,13 @@
+# Development dependencies. NOT needed to build the tiles or run the
+# watch app - build_tiles.py and check_grid.py are stdlib only, so the
+# data workflow can run them without installing anything.
+#
+# Pinned rather than floated: this suite is the gate in front of the
+# data pipeline, and a runner that quietly upgrades underneath it could
+# change what passes without any change to this repository.
+
+pytest==9.1.1
+
+# Only for tools/make_icons.py, which regenerates the launcher icons.
+# Not run in CI - the PNGs are committed.
+pillow>=10.0
