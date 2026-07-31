@@ -1,0 +1,43 @@
+name: CI
+
+# Runs on every push and pull request, with no path filter.
+#
+# The data workflow does run these same checks, but only when
+# tools/build_tiles.py changes - so a commit touching source/AedTiles.mc,
+# which is exactly what check_grid.py exists to guard, used to run
+# nothing at all. The guard has to fire on the change it guards.
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements-dev.txt
+
+      - name: Grid agreement between Python and Monkey C
+        run: python tools/check_grid.py
+
+      - name: Monkey C structure and strings
+        # CI can't compile Monkey C - the SDK needs a licence, a
+        # developer key and a simulator - so this covers the subset that
+        # is mechanical to detect: dangling calls, unknown classes,
+        # unbalanced braces, missing or orphaned strings.
+        run: python tools/check_sources.py
+
+      - name: Tests
+        run: pytest -q
+
+  # The device suite is deliberately absent. Running it needs the Garmin
+  # SDK, a developer key as a secret, and a simulator under a virtual
+  # display - and it would still only cover what the four representative
+  # devices cover. tools/run-tests.ps1 runs it locally before a push,
+  # which is where the 77 tests actually get exercised.

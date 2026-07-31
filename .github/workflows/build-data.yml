@@ -16,8 +16,10 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    # Only when the generator itself changes - a watch-side commit has
-    # no effect on the data.
+    # Only what changes the published data. Correctness of the grid is
+    # CI's job now (ci.yml, no path filter) - this filter exists so a
+    # watch-side commit doesn't re-download 6 MB and redeploy for
+    # nothing.
     paths:
       - "tools/build_tiles.py"
       - ".github/workflows/build-data.yml"
