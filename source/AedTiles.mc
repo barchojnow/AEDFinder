@@ -15,6 +15,25 @@ module AedTiles {
 
     const BASE_URL = "https://barchojnow.github.io/AEDFinder";
 
+    // The one place the app's version is written down. It used to be
+    // spelled out inside AedClient's User-Agent, where it would have sat
+    // at 1.0 through every release - and a version string nobody bumps
+    // is worse than none, because it answers "which build is this?"
+    // confidently and wrongly.
+    //
+    // Lives here because this module already owns who we are on the
+    // wire. tools/test_version.py fails if a second copy appears
+    // anywhere in source/, which is the only way this drifts again.
+    const VERSION = "0.0.1";
+
+    // A function rather than a concatenated const: Monkey C's rules for
+    // what counts as a compile-time constant expression are not worth
+    // discovering at build time. Called once per tile fetch.
+    function userAgent() as Lang.String {
+        return "AEDFinder/" + VERSION
+            + " (+https://github.com/barchojnow/AEDFinder)";
+    }
+
     // Must keep the `d` suffix: Monkey C's Float is 32-bit, and rounding
     // a cell index at 32-bit precision puts positions near a boundary in
     // a different cell than the 64-bit generator chose.

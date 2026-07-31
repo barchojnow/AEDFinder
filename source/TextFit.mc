@@ -38,6 +38,63 @@ module TextFit {
         return 2.0 * Math.sqrt(r * r - dy * dy) - 12.0;
     }
 
+    // No String.split at API level 3.1.
+    function splitWords(text as Lang.String) as Lang.Array {
+        var words = [] as Lang.Array;
+        var current = "";
+        var chars = text.toCharArray();
+        for (var i = 0; i < chars.size(); i++) {
+            var c = chars[i] as Lang.Char;
+            if (c == ' ') {
+                if (!current.equals("")) {
+                    words.add(current);
+                    current = "";
+                }
+            } else {
+                current += c.toString();
+            }
+        }
+        if (!current.equals("")) {
+            words.add(current);
+        }
+        return words;
+    }
+
+    // Wraps `text` to at most maxLines, each fitting the chord at its own
+    // height. Whatever will not fit is dropped and the last line gets an
+    // ellipsis - the alternative is what a plain drawText does, which is
+    // to run off both edges of a round screen and lose the beginning AND
+    // the end of the line.
+    function wrap(dc as Graphics.Dc, text as Lang.String, font as Graphics.FontType,
+                  yTop as Lang.Float, maxLines as Lang.Number) as Lang.Array {
+        var lineHeight = dc.getFontHeight(font).toFloat();
+        var words = splitWords(text);
+        var lines = [] as Lang.Array;
+        var line = "";
+
+        for (var i = 0; i < words.size(); i++) {
+            var word = words[i] as Lang.String;
+            var candidate = line.equals("") ? word : line + " " + word;
+            var y = yTop + lines.size() * lineHeight;
+
+            if (dc.getTextWidthInPixels(candidate, font) <= chordWidth(dc, y + lineHeight)
+                    || line.equals("")) {
+                line = candidate;
+            } else {
+                lines.add(line);
+                if (lines.size() == maxLines) {
+                    lines[maxLines - 1] = (lines[maxLines - 1] as Lang.String) + "...";
+                    return lines;
+                }
+                line = word;
+            }
+        }
+        if (!line.equals("")) {
+            lines.add(line);
+        }
+        return lines;
+    }
+
     // Picks the largest font (starting at fonts()[startIdx]) that
     // fits `text` within the round screen at a line starting at yTop.
     // For text in the top half the narrowest point is the top edge

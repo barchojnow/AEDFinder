@@ -140,6 +140,122 @@ def draw_store_icon(background: tuple[int, int, int, int]) -> Image.Image:
     return canvas.convert("RGB")
 
 
+# On-device app store icons: 128x128, one full-colour and one reduced.
+DEVICE_ICON_SIZE = 128
+DEVICE_ICON_PADDING = 8
+
+# Connect IQ's 64-colour devices use a fixed 4x4x4 cube - each channel
+# is one of these four levels. Quantising here means we choose what the
+# mark degrades into; leaving it to the firmware means finding out on a
+# watch, after publishing.
+CIQ64_LEVELS = (0x00, 0x55, 0xAA, 0xFF)
+_SNAP = bytes(min(CIQ64_LEVELS, key=lambda level: abs(level - v))
+              for v in range(256)) * 3
+
+
+def draw_device_icon(reduce_colors: bool) -> Image.Image:
+    """The mark on black, sized for the store list on the watch itself.
+
+    Black rather than transparent: the on-device list background is not
+    ours to assume, and the bolt is white.
+    """
+    canvas = Image.new("RGBA", (DEVICE_ICON_SIZE, DEVICE_ICON_SIZE), (0, 0, 0, 255))
+    inner = DEVICE_ICON_SIZE - 2 * DEVICE_ICON_PADDING
+    canvas.alpha_composite(draw_mark(inner), (DEVICE_ICON_PADDING, DEVICE_ICON_PADDING))
+    icon = canvas.convert("RGB")
+    return icon.point(_SNAP) if reduce_colors else icon
+
+
+# Connect IQ store hero image: exactly 1440x720, under 2048 KB.
+HERO_SIZE = (1440, 720)
+HERO_MAX_BYTES = 2048 * 1024
+
+# Lato ships with most Linux distributions and with LibreOffice on
+# Windows. Falls back to whatever Pillow can find rather than failing
+# the whole icon run over a banner.
+FONT_CANDIDATES = [
+    "/usr/share/fonts/truetype/lato/Lato-{}.ttf",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans{}.ttf",
+    "C:/Windows/Fonts/{}.ttf",
+]
+
+
+def _font(weight: str, size: int):
+    from PIL import ImageFont
+
+    for pattern in FONT_CANDIDATES:
+        for name in (weight, {"Black": "-Bold", "Regular": ""}.get(weight, ""), "arialbd"):
+            try:
+                return ImageFont.truetype(pattern.format(name), size)
+            except OSError:
+                continue
+    return ImageFont.load_default()
+
+
+def draw_watch_face(size: int) -> Image.Image:
+    """The main screen as the app actually draws it, mid-navigation.
+
+    Geometry is lifted from AedRenderer.draw() rather than invented, so
+    the banner cannot promise a layout the app does not have. Same
+    reason the mark is generated instead of exported: a promo image that
+    drifts from the product is a slow-motion lie.
+    """
+    ss = 4
+    s_px = size * ss
+    face = Image.new("RGBA", (s_px, s_px), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(face)
+
+    # A bezel, because the screen is pure black and so is roughly
+    # everything else on this banner - without a rim the face reads as a
+    # hole rather than a watch.
+    bezel = s_px * 0.035
+    draw.ellipse([0, 0, s_px, s_px], fill=(58, 58, 60, 255))
+    draw.ellipse([bezel, bezel, s_px - bezel, s_px - bezel], fill=(0, 0, 0, 255))
+
+    cx = cy = s_px / 2.0
+    s = (s_px - 2 * bezel) / 416.0      # AedRenderer.REF_SIZE
+
+    mark = draw_mark(int(92 * s))
+    face.alpha_composite(mark, (int(cx - 46 * s), int(bezel + 22 * s)))
+
+    # AedRenderer.drawArrow, including the dark outline drawn 1.25x
+    # behind it. Pointing straight ahead: no rotation to reproduce.
+    points = [(0, -40 * s), (20 * s, 30 * s), (0, 15 * s), (-20 * s, 30 * s)]
+    draw.polygon([(cx + x * 1.25, cy + y * 1.25) for x, y in points],
+                 fill=(64, 64, 64, 255))
+    draw.polygon([(cx + x, cy + y) for x, y in points], fill=RED)
+
+    label = "180 m"
+    font = _font("Black", int(46 * s))
+    box = draw.textbbox((0, 0), label, font=font)
+    draw.text((cx - (box[2] - box[0]) / 2, cy + 74 * s), label, font=font, fill=RED)
+
+    return face.resize((size, size), Image.LANCZOS)
+
+
+def draw_hero() -> Image.Image:
+    width, height = HERO_SIZE
+    hero = Image.new("RGBA", HERO_SIZE, (22, 22, 24, 255))
+    draw = ImageDraw.Draw(hero)
+
+    face = 540
+    hero.alpha_composite(draw_watch_face(face), (120, (height - face) // 2))
+
+    x = 120 + face + 120
+    draw.text((x, 222), "AED Finder", font=_font("Black", 100), fill=(255, 255, 255, 255))
+    # Red rule: the only warm note outside the watch, and it ties the
+    # wordmark to the mark on the left.
+    draw.rectangle([x, 352, x + 96, 358], fill=RED)
+    draw.text((x, 394), "The nearest defibrillator,", font=_font("Regular", 44),
+              fill=(205, 205, 208, 255))
+    draw.text((x, 448), "on your wrist.", font=_font("Regular", 44),
+              fill=(205, 205, 208, 255))
+    draw.text((x, 530), "POLAND   ·   OPENSTREETMAP DATA", font=_font("Regular", 25),
+              fill=(125, 125, 130, 255))
+
+    return hero.convert("RGB")
+
+
 def main() -> None:
     # Fallback, so an unmapped product still compiles.
     base = ROOT / "resources" / "drawables"
@@ -174,6 +290,24 @@ xsi:noNamespaceSchemaLocation="https://developer.garmin.com/downloads/connect-iq
         path = store / f"store_icon_{name}.png"
         draw_store_icon(background).save(path)
         print(f"wrote store/{path.name} ({STORE_SIZE}x{STORE_SIZE}, sRGB)")
+
+    for name, reduce_colors in (("device_64color", True), ("device_24bit", False)):
+        path = store / f"{name}.png"
+        draw_device_icon(reduce_colors).save(path)
+        print(f"wrote store/{path.name} "
+              f"({DEVICE_ICON_SIZE}x{DEVICE_ICON_SIZE}"
+              f"{', 64-colour palette' if reduce_colors else ''})")
+
+    hero_path = store / "hero.png"
+    draw_hero().save(hero_path, optimize=True)
+    written = hero_path.stat().st_size
+    if written > HERO_MAX_BYTES:
+        raise SystemExit(
+            f"hero.png is {written // 1024} KB; the store rejects anything "
+            f"over {HERO_MAX_BYTES // 1024} KB"
+        )
+    print(f"wrote store/{hero_path.name} "
+          f"({HERO_SIZE[0]}x{HERO_SIZE[1]}, {written // 1024} KB)")
 
 
 if __name__ == "__main__":

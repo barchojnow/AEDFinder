@@ -2,6 +2,16 @@ import Toybox.Lang;
 import Toybox.System;
 import Toybox.WatchUi;
 
+// Menu2 item ids.
+//
+// A module, not a class constant: Monkey C treats `const` inside a class
+// as an instance member, so AedFinderDelegate.METRONOME_ITEM_ID does not
+// resolve from the menu delegate that has to read it.
+module MenuIds {
+    // Negative, so it can never collide with an index into the AED list.
+    const METRONOME = -1;
+}
+
 // Input for the main view.
 //
 //   START / tap   list of the 5 nearest AEDs; picking one retargets
@@ -17,6 +27,8 @@ class AedFinderDelegate extends WatchUi.BehaviorDelegate {
     private var view as AedFinderView;
     private var strMenuTitle as Lang.String;
     private var strAedFallback as Lang.String;
+    private var strCprTitle as Lang.String;
+    private var strCprSubtitle as Lang.String;
     // Short forms, for the one menu line. The long ones are on the
     // detail screen, which has room for them.
     private var strAccessShortPrivate as Lang.String;
@@ -29,6 +41,8 @@ class AedFinderDelegate extends WatchUi.BehaviorDelegate {
         strAedFallback = WatchUi.loadResource(Rez.Strings.AedFallbackName) as Lang.String;
         strAccessShortPrivate = WatchUi.loadResource(Rez.Strings.AccessShortPrivate) as Lang.String;
         strAccessShortCustomers = WatchUi.loadResource(Rez.Strings.AccessShortCustomers) as Lang.String;
+        strCprTitle = WatchUi.loadResource(Rez.Strings.CprTitle) as Lang.String;
+        strCprSubtitle = WatchUi.loadResource(Rez.Strings.CprMenuSubtitle) as Lang.String;
     }
 
     // On touch devices a screen tap maps to the select behavior; on
@@ -67,13 +81,26 @@ class AedFinderDelegate extends WatchUi.BehaviorDelegate {
 
     private function openAedMenu() as Lang.Boolean {
         var aeds = view.getNearestAeds(MENU_MAX_ITEMS);
-        if (aeds.size() == 0) {
-            // Nothing to choose from yet (no fix / nothing nearby):
-            // let the system handle the event normally.
-            return false;
-        }
 
         var menu = new WatchUi.Menu2({ :title => strMenuTitle });
+
+        // First, above the defibrillators, which reads wrong under a
+        // title that says "nearest AEDs" and is right anyway: the
+        // sequence is call, compress, and only then send someone for the
+        // AED. Whoever needs this needs it before they need the list,
+        // and scrolling past five entries to reach it would be the one
+        // place in this app where taxonomy costs seconds.
+        //
+        // The nearest AED is targeted automatically, so nobody reaches
+        // the list by reflex - it is already the deliberate path, and
+        // putting this at the top of it costs the AEDs nothing.
+        menu.addItem(new WatchUi.MenuItem(
+            strCprTitle, strCprSubtitle, MenuIds.METRONOME, {}
+        ));
+
+        // No early return when the list is empty any more: with no fix
+        // and no tile there is still one thing here worth opening, and
+        // that is exactly the situation where someone might need it.
         for (var i = 0; i < aeds.size(); i++) {
             var a = aeds[i] as Lang.Dictionary;
             // The item id is the index into the view's sorted list,
@@ -170,8 +197,25 @@ class AedMenuDelegate extends WatchUi.Menu2InputDelegate {
     }
 
     function onSelect(item as WatchUi.MenuItem) as Void {
+        var id = item.getId() as Lang.Number;
+
+        if (id == MenuIds.METRONOME) {
+            // Replaces the menu rather than stacking on it, so leaving
+            // the metronome lands back on the arrow in one press.
+            // setCovered stays true: GPS keeps running underneath, and
+            // whoever stops compressing may need the arrow immediately.
+            WatchUi.popView(WatchUi.SLIDE_DOWN);
+            WatchUi.pushView(
+                new CprMetronomeView(new CprMetronome(
+                    new Vibrator(), new Scheduler(), new SystemClock())),
+                new CprMetronomeDelegate(view),
+                WatchUi.SLIDE_LEFT
+            );
+            return;
+        }
+
         // No confirmation step: the list is already the deliberate path.
-        view.selectAed(item.getId() as Lang.Number);
+        view.selectAed(id);
         view.setCovered(false);
         WatchUi.popView(WatchUi.SLIDE_DOWN);
     }

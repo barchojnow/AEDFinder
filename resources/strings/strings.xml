@@ -27,6 +27,13 @@
          question would look. -->
     <string id="Attribution">(c) OpenStreetMap</string>
 
+    <!-- CPR metronome. The rate is spelled out because a user who knows
+         the guideline can check the app against it in one glance. -->
+    <string id="CprTitle">CPR rhythm</string>
+    <string id="CprMenuSubtitle">110/min pacing</string>
+    <string id="CprRate">110 / min</string>
+    <string id="CprStopHint">any key: stop</string>
+
     <string id="MenuTitle">Nearest AEDs</string>
     <!-- Used when OSM has no note about where the device hangs. -->
     <string id="AedFallbackName">AED</string>

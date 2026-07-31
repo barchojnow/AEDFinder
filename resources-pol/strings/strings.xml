@@ -17,6 +17,11 @@
     <!-- Nazwa wlasna - bez tlumaczenia. -->
     <string id="Attribution">(c) OpenStreetMap</string>
 
+    <string id="CprTitle">Rytm RKO</string>
+    <string id="CprMenuSubtitle">tempo 110/min</string>
+    <string id="CprRate">110 / min</string>
+    <string id="CprStopHint">dowolny klawisz: stop</string>
+
     <string id="MenuTitle">Najblizsze AED</string>
     <string id="AedFallbackName">AED</string>
 

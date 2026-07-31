@@ -19,6 +19,8 @@ class AedRenderer {
     const ANGLE_SMOOTHING = 0.25;
     // Offsets are tuned for 416x416 and scaled by width/REF_SIZE.
     const REF_SIZE = 416.0f;
+    // Two: the arrow tip starts at cy - 40s and a third line would reach it.
+    const DETAIL_MAX_LINES = 2;
 
     private var view as AedFinderView;
     private var displayedAngle as Lang.Float = 0.0f;
@@ -126,10 +128,20 @@ class AedRenderer {
             dc.drawText(cx, y, f, accessText, Graphics.TEXT_JUSTIFY_CENTER);
             y += dc.getFontHeight(f) * 0.9;
         }
+        // Wrapped, not shrunk. "wewnatrz pietro 0 Mo-Fr 07-17" is already
+        // past what fits on one line at the SMALLEST font, and fitFont
+        // has nothing left to fall back to - so drawText ran it off both
+        // edges and ate the first and last characters. Two lines, then
+        // an ellipsis.
         if (!detail.equals("")) {
-            var f2 = TextFit.fitFont(dc, detail, 4, y, true);
+            var font = Graphics.FONT_XTINY;
+            var lines = TextFit.wrap(dc, detail, font, y, DETAIL_MAX_LINES);
+            var lineHeight = dc.getFontHeight(font);
             dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(cx, y, f2, detail, Graphics.TEXT_JUSTIFY_CENTER);
+            for (var i = 0; i < lines.size(); i++) {
+                dc.drawText(cx, y + i * lineHeight, font,
+                    lines[i] as Lang.String, Graphics.TEXT_JUSTIFY_CENTER);
+            }
         }
     }
 
