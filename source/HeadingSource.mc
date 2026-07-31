@@ -1,46 +1,33 @@
 import Toybox.Lang;
 
-// Which way the watch is facing, from whichever of the two sources is
-// trustworthy right now.
-//
-// Neither source is good enough alone. The magnetic compass works
-// standing still but in the field it is routinely off by 90-180 degrees
-// from wrist tilt and missed calibration - and an arrow confidently
-// pointing the wrong way is worse than no arrow. The GPS
-// course-over-ground has neither problem but is meaningless below
-// walking pace, where it becomes noise. So: course while moving,
+// Which way the watch is facing. Neither source works alone: the
+// compass is usable standing still but is routinely 90-180 degrees off
+// from wrist tilt and missed calibration, while the GPS course has no
+// such problem but is noise below walking pace. So course while moving,
 // compass while still.
 //
-// The awkward case is watches with no magnetometer at all (Forerunner
-// 55). There the compass never reports, and rather than special-casing
-// a device list, this class simply notices: a watch that has never
-// delivered a magnetic heading is treated as having none, and the speed
-// threshold drops so the GPS course - the only source available -
-// starts driving the arrow from a gentle walk instead of a brisk one.
+// Watches with no magnetometer (Forerunner 55) are detected rather than
+// listed: one that has never reported a heading is treated as having no
+// compass, and the speed threshold drops so the GPS course - its only
+// source - starts driving the arrow from a gentle walk.
 //
-// Pure state, no Toybox dependencies beyond Lang, which is what makes
-// these rules testable off-device. See HeadingSourceTest.
+// Pure state, no Toybox dependencies, so the rules are testable
+// off-device. See HeadingSourceTest.
 class HeadingSource {
 
-    // Above this ground speed the GPS course replaces the compass.
     const GPS_MIN_SPEED_MPS = 1.0;
-    // ...but when the GPS course is the only source there is, accept it
-    // from a gentle walking pace.
+    // Lower, because here the GPS course is the only source there is.
     const NO_COMPASS_MIN_SPEED_MPS = 0.5;
 
     private var currentHeading as Lang.Float = 0.0f;
-    // True once ANY source has delivered a direction. Until then the
-    // arrow points nowhere meaningful and the view keeps it gray.
     private var valid as Lang.Boolean = false;
-    // True while the GPS course is driving; blocks the noisier compass
-    // callback from overwriting it mid-stride.
+    // Blocks the noisier compass from overwriting the course mid-stride.
     private var gpsActive as Lang.Boolean = false;
-    // True once the magnetometer has reported even once. Never reset:
-    // it is a statement about the hardware, not about this moment.
+    // Never reset: a statement about the hardware, not about right now.
     private var magnetometerSeen as Lang.Boolean = false;
 
-    // A new GPS fix. Both arguments are nullable because Position.Info
-    // leaves them null until the engine has enough to compute them.
+    // Both arguments are nullable - Position.Info leaves them null until
+    // the engine can compute them.
     function onGpsUpdate(speed as Lang.Float or Null,
                          gpsHeading as Lang.Float or Null) as Void {
         var minSpeed = magnetometerSeen
@@ -52,15 +39,12 @@ class HeadingSource {
             gpsActive = true;
             valid = true;
         } else {
-            // Below the threshold the course is dropped, but the last
-            // known heading is kept: a stale direction beats an arrow
-            // snapping to north the moment you stop walking.
+            // Keep the last heading: an arrow snapping to north the
+            // moment you pause is worse than a slightly stale one.
             gpsActive = false;
         }
     }
 
-    // A compass reading. Only drives the arrow while the GPS course
-    // isn't.
     function onCompassUpdate(compassHeading as Lang.Float or Null) as Void {
         if (compassHeading == null) {
             return;
@@ -76,12 +60,12 @@ class HeadingSource {
         return currentHeading;
     }
 
+    // False until some source reports; the view keeps the arrow gray
+    // until then rather than pointing it somewhere plausible.
     function isValid() as Lang.Boolean {
         return valid;
     }
 
-    // False on watches that have never reported a magnetic heading -
-    // which, after a few seconds of runtime, means they have no compass.
     function hasCompass() as Lang.Boolean {
         return magnetometerSeen;
     }

@@ -1,17 +1,16 @@
 import Toybox.Lang;
 import Toybox.Test;
 
-// Unit tests for AedList - the radius filtering, merging and distance
-// sorting that decide which defibrillator the arrow points at. This is
-// where a silent bug is most expensive (people walk the wrong way), and
-// it is pure logic, so it is fully testable off-device.
+// Radius filtering, merging and sorting - what decides where the arrow
+// points. A silent bug here walks people the wrong way, and it's pure
+// logic, so it's fully testable off-device.
 module AedListTest {
 
     const LAT = 52.2297d;
     const LON = 21.0122d;
     // 1 milli-degree of latitude is ~111.19 m, so the offsets below are
     // easy to reason about: +0.002 = ~222 m, +0.02 = ~2224 m.
-    const RADIUS_M = 2000;
+    const RADIUS_M = 1500;
 
     function aed(latOffset as Lang.Double, id as Lang.String,
                  loc as Lang.String) as Lang.Dictionary {
@@ -47,13 +46,9 @@ module AedListTest {
 
     // --- identity, not proximity -----------------------------------------
 
-    // The rule this whole app differs from ZabkaFinder on. Two
-    // defibrillators a few metres apart - a hospital lobby and the ward
-    // next to it, opposite sides of a mall entrance - are two devices.
-    // ZabkaFinder collapsed anything within 25 m into one entry and
-    // documented the consequence as a known limitation; here that would
-    // mean sending someone to the wrong wall, so the OSM node id
-    // decides instead.
+    // Two devices a few metres apart - a hospital lobby and the ward
+    // next to it - are two devices. ZabkaFinder collapsed anything
+    // within 25 m; here that means the wrong wall.
     (:test)
     function keepsTwoDistinctAedsMetresApart(logger as Test.Logger) as Lang.Boolean {
         var list = new AedList();
@@ -113,10 +108,7 @@ module AedListTest {
 
     // --- merging ---------------------------------------------------------
 
-    // A refresh that returns fewer entries must not lose knowledge. This
-    // matters more here than in a shop finder: a defibrillator known ten
-    // minutes ago is still a defibrillator, and dropping it because one
-    // response came back thin is not an acceptable failure mode.
+    // A defibrillator known ten minutes ago is still a defibrillator.
     (:test)
     function keepsPreviouslyKnownAedsStillInRange(logger as Test.Logger) as Lang.Boolean {
         var list = new AedList();
@@ -184,10 +176,7 @@ module AedListTest {
         return true;
     }
 
-    // The menu shows live distances, so getNearest must re-sort from the
-    // CURRENT position rather than serving the order captured when the
-    // tile was fetched. ZabkaFinder had exactly this bug: a menu frozen
-    // at search time, which is why the test exists.
+    // ZabkaFinder had exactly this bug: a menu frozen at search time.
     (:test)
     function menuReSortsFromTheCurrentPosition(logger as Test.Logger) as Lang.Boolean {
         var list = new AedList();
@@ -242,10 +231,7 @@ module AedListTest {
 
     // --- empty and out-of-range access -----------------------------------
 
-    // The view reaches for these before any tile has arrived - on the
-    // very first frame, and again whenever a cell turns out to hold
-    // nothing. Returning null rather than throwing is what lets the
-    // caller stay free of guards.
+    // Reached for on the very first frame, before any tile arrives.
     (:test)
     function nearestOfAnEmptyListIsNull(logger as Test.Logger) as Lang.Boolean {
         var list = new AedList();
@@ -260,10 +246,8 @@ module AedListTest {
         return true;
     }
 
-    // Menu item ids are indices into this list, and the list is re-sorted
-    // and re-merged underneath an open menu. An id can therefore outlive
-    // the entry it pointed at, so an out-of-range read has to be
-    // survivable rather than merely unlikely.
+    // Menu ids are indices, and the list re-sorts underneath an open
+    // menu - an id can outlive the entry it pointed at.
     (:test)
     function outOfRangeGetReturnsNull(logger as Test.Logger) as Lang.Boolean {
         var list = new AedList();
@@ -296,9 +280,8 @@ module AedListTest {
         return true;
     }
 
-    // An empty tile is a legitimate answer (HTTP 404 from the tile set),
-    // and it must not disturb what is already known - the user may be
-    // walking to a defibrillator found in the previous cell.
+    // A legitimate answer (404), and the user may be walking to a
+    // defibrillator found in the previous cell.
     (:test)
     function anEmptyTileDoesNotDiscardKnownAeds(logger as Test.Logger) as Lang.Boolean {
         var list = new AedList();
@@ -316,9 +299,7 @@ module AedListTest {
         return true;
     }
 
-    // The return value drives the caller's retry decision, so it has to
-    // count what arrived in this tile - not what the list happens to
-    // hold after merging in everything remembered from before.
+    // Drives the retry decision: what arrived, not what is held.
     (:test)
     function freshCountExcludesMergedSurvivors(logger as Test.Logger) as Lang.Boolean {
         var list = new AedList();

@@ -1,21 +1,15 @@
 #!/usr/bin/env python3
-"""Generates the launcher icon PNGs for every screen class.
+"""Generates the launcher icon PNGs.
 
-The in-app mark is drawn with primitives (source/AedLogo.mc), so it needs
-no bitmap at all. The launcher icon is the one thing that must be a real
-image, because Garmin's menu renders it rather than the app.
-
-Committing eight PNGs with no source is how icon sets rot: nobody can
-change the red, or the bolt angle, without redrawing all of them by hand
-and hoping they still match. So the icons are generated here, and this
-script - not the PNGs - is the thing to edit. Re-run it after any change:
+The in-app mark is drawn with primitives (AedLogo.mc); only the launcher
+icon must be a real image, because Garmin renders it. Eight committed
+PNGs with no source is how icon sets rot, so this script - not the PNGs -
+is the thing to edit:
 
     python tools/make_icons.py
 
-Sizes come from Garmin's per-product launcher icon specs, which do not
-follow screen size in any regular way (a 390 px Venu wants 60 px, a
-390 px Forerunner 165 wants 54). monkey.jungle maps each product to its
-size explicitly.
+Sizes come from Garmin's per-product specs and don't follow screen size:
+a 390 px Venu wants 60, a 390 px Forerunner 165 wants 54.
 """
 
 from __future__ import annotations
@@ -29,9 +23,8 @@ ROOT = Path(__file__).resolve().parent.parent
 # Garmin launcher icon sizes used across the supported products.
 SIZES = [35, 36, 40, 54, 60, 61, 65, 70]
 
-# Rendered at 8x and downsampled, because Garmin's icons are small
-# enough that aliasing on the heart's curve is the first thing you
-# notice in the app list.
+# Rendered at 8x and downsampled: aliasing on the heart's curve is the
+# first thing you notice in the app list.
 SUPERSAMPLE = 8
 
 RED = (214, 40, 40, 255)
@@ -39,19 +32,14 @@ BOLT = (255, 255, 255, 255)
 
 
 def draw_mark(size: int) -> Image.Image:
-    """Heart with a lightning bolt punched out of it.
-
-    Geometry mirrors AedLogo.draw() so the launcher icon and the in-app
-    mark are recognisably the same thing.
-    """
+    """Heart with a bolt punched out. Geometry mirrors AedLogo.draw()."""
     s = size * SUPERSAMPLE
     image = Image.new("RGBA", (s, s), (0, 0, 0, 0))
     draw = ImageDraw.Draw(image)
 
     cx = s / 2.0
     cy = s / 2.0
-    # Slightly smaller than the full canvas: Garmin crops launcher icons
-    # to a circle on some watches, and a heart touching the edge loses
+    # Some watches crop to a circle; a heart touching the edge loses
     # its lobes.
     scale = s * 0.86
 
@@ -101,9 +89,7 @@ xsi:noNamespaceSchemaLocation="https://developer.garmin.com/downloads/connect-iq
 
 
 def main() -> None:
-    # Base resource: the fallback definition of LauncherIcon, so the
-    # project compiles even for a product that monkey.jungle hasn't
-    # mapped to a variant yet.
+    # Fallback, so an unmapped product still compiles.
     base = ROOT / "resources" / "drawables"
     base.mkdir(parents=True, exist_ok=True)
     draw_mark(60).save(base / "launcher_icon.png")

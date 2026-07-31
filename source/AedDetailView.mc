@@ -2,22 +2,15 @@ import Toybox.Graphics;
 import Toybox.Lang;
 import Toybox.WatchUi;
 
-// Everything OpenStreetMap knows about one defibrillator, on one
-// screen: how far, whether you can reach it, indoors or out, which
-// floor, when it's accessible, and the free-text note saying where on
-// the wall it actually hangs.
+// Everything OSM knows about one defibrillator, on one screen.
 //
-// This screen has no counterpart in ZabkaFinder and is the main reason
-// the port isn't just a rename. A shop is its own signage: you arrive,
-// you see it. A defibrillator is a box that may be behind a reception
-// desk, on the second floor, in a building that locks at 18:00. The
-// arrow can get someone to the right postcode; only these tags get them
-// to the right wall, and only in time if they read them before setting
-// off rather than after.
+// No counterpart in ZabkaFinder, and the main reason the port isn't a
+// rename: a shop is its own signage, a defibrillator is a box that may
+// be behind a reception desk, on the second floor, in a building that
+// locks at 18:00. The arrow gets you to the postcode; these tags get
+// you to the wall - and only if read before setting off.
 //
-// Text is laid out top-down and wrapped against the round screen's
-// chord at each line's own height, so nothing clips on a 208 px
-// Forerunner and nothing floats in the middle of a 454 px Fenix.
+// Wrapped against the round screen's chord at each line's own height.
 class AedDetailView extends WatchUi.View {
 
     const REF_SIZE = 416.0f;
@@ -66,17 +59,16 @@ class AedDetailView extends WatchUi.View {
         var s = dc.getWidth() / REF_SIZE;
         var y = 40.0 * s;
 
-        // Header, small and gray - it's a label, not information.
+
         y = drawBlock(dc, cx, y, strTitle, Graphics.FONT_XTINY,
             Graphics.COLOR_DK_GRAY, s);
 
-        // Distance, the one number worth reading from arm's length.
+
         y = drawBlock(dc, cx, y + 2 * s, distance.format("%.0f") + " m",
             Graphics.FONT_MEDIUM, Graphics.COLOR_RED, s);
 
-        // Access, coloured by whether it stops you: green when the
-        // device is public, orange when it isn't. Orange, not red - the
-        // AED is still there, you just may need to ask someone.
+        // Orange, not red: the AED is still there, you may just have
+        // to ask someone.
         var access = aed[:access] as Lang.String or Null;
         var accessText = strAccessUnknown;
         var accessColor = Graphics.COLOR_LT_GRAY;
@@ -95,8 +87,7 @@ class AedDetailView extends WatchUi.View {
         y = drawBlock(dc, cx, y + 4 * s, accessText, Graphics.FONT_XTINY,
             accessColor, s);
 
-        // Indoors/outdoors and floor, joined because they answer one
-        // question: which door, then which staircase.
+        // Which door, then which staircase.
         var placement = "";
         var indoor = aed[:indoor];
         if (indoor != null && indoor == 1) {
@@ -121,8 +112,7 @@ class AedDetailView extends WatchUi.View {
                 Graphics.FONT_XTINY, Graphics.COLOR_WHITE, s);
         }
 
-        // The free-text hint, last because it's the longest and the one
-        // worth reading properly once you're moving.
+        // Longest, and the one worth reading properly once moving.
         var loc = aed[:loc] as Lang.String or Null;
         var locText = (loc != null && !loc.equals("")) ? loc : strUnknownLocation;
         var locColor = (loc != null && !loc.equals(""))
@@ -136,8 +126,7 @@ class AedDetailView extends WatchUi.View {
         }
     }
 
-    // Draws one wrapped block starting at yTop and returns the y just
-    // below it, so callers can stack blocks without tracking heights.
+    // Returns the y below the block, so callers can stack them.
     private function drawBlock(dc as Graphics.Dc, cx as Lang.Float, yTop as Lang.Float,
                                text as Lang.String, font as Graphics.FontType,
                                color as Graphics.ColorType, s as Lang.Float) as Lang.Float {
@@ -152,10 +141,8 @@ class AedDetailView extends WatchUi.View {
             var word = words[i] as Lang.String;
             var candidate = line.equals("") ? word : line + " " + word;
 
-            // The usable width is the chord at THIS line's height, not a
-            // fixed margin: on a round screen a line near the top has
-            // barely half the width of one through the middle, and text
-            // sized for the middle would run off the glass up there.
+            // Chord at THIS line's height: near the top a line has
+            // barely half the width of one through the middle.
             if (dc.getTextWidthInPixels(candidate, font)
                     <= TextFit.chordWidth(dc, y + lineHeight / 2.0)
                 || line.equals("")) {
@@ -173,8 +160,7 @@ class AedDetailView extends WatchUi.View {
         return y;
     }
 
-    // Splits on spaces. Monkey C has no String.split at the API level
-    // this app targets (3.1), so it's done by hand.
+    // No String.split at API level 3.1.
     private function split(text as Lang.String) as Lang.Array {
         var words = [] as Lang.Array;
         var current = "";

@@ -1,21 +1,15 @@
 import Toybox.Lang;
+import Toybox.System;
 import Toybox.WatchUi;
 
-// Input handling for the main view.
+// Input for the main view.
 //
-//   START / tap   the list of the 5 nearest AEDs; picking one retargets
-//                 the arrow immediately
-//   MENU          full details of the AED currently being navigated to
+//   START / tap   list of the 5 nearest AEDs; picking one retargets
+//   MENU          details of the current target
 //
-// During the walking-away prompt both keys are reinterpreted, exactly
-// as the prompt's own hint line says: START means "keep going", MENU
-// means "show me the others".
-//
-// The split is deliberate. The fastest possible path - open the widget,
-// follow the arrow - needs no input at all, because the nearest AED is
-// targeted automatically. Every button here belongs to the deliberate
-// path, so a key can cost a screen without costing anyone time in an
-// emergency.
+// During the away prompt both are reinterpreted, as its hint line says.
+// The fastest path - open, follow the arrow - needs no input at all, so
+// a keypress can cost a screen without costing anyone time.
 class AedFinderDelegate extends WatchUi.BehaviorDelegate {
 
     const MENU_MAX_ITEMS = 5;
@@ -23,16 +17,18 @@ class AedFinderDelegate extends WatchUi.BehaviorDelegate {
     private var view as AedFinderView;
     private var strMenuTitle as Lang.String;
     private var strAedFallback as Lang.String;
-    private var strAccessPrivate as Lang.String;
-    private var strAccessCustomers as Lang.String;
+    // Short forms, for the one menu line. The long ones are on the
+    // detail screen, which has room for them.
+    private var strAccessShortPrivate as Lang.String;
+    private var strAccessShortCustomers as Lang.String;
 
     function initialize(view as AedFinderView) {
         BehaviorDelegate.initialize();
         self.view = view;
         strMenuTitle = WatchUi.loadResource(Rez.Strings.MenuTitle) as Lang.String;
         strAedFallback = WatchUi.loadResource(Rez.Strings.AedFallbackName) as Lang.String;
-        strAccessPrivate = WatchUi.loadResource(Rez.Strings.AccessPrivate) as Lang.String;
-        strAccessCustomers = WatchUi.loadResource(Rez.Strings.AccessCustomers) as Lang.String;
+        strAccessShortPrivate = WatchUi.loadResource(Rez.Strings.AccessShortPrivate) as Lang.String;
+        strAccessShortCustomers = WatchUi.loadResource(Rez.Strings.AccessShortCustomers) as Lang.String;
     }
 
     // On touch devices a screen tap maps to the select behavior; on
@@ -87,44 +83,79 @@ class AedFinderDelegate extends WatchUi.BehaviorDelegate {
             ));
         }
 
-        // Keep GPS/sensors alive while the menu covers the view, so
-        // distances stay fresh and there's no fix re-acquisition after
-        // returning to the arrow screen.
+        // Keeps GPS alive so distances stay fresh behind the menu.
         view.setCovered(true);
         WatchUi.pushView(menu, new AedMenuDelegate(view), WatchUi.SLIDE_UP);
         return true;
     }
 
-    // Title line: the free-text hint about where the device hangs, when
-    // OSM has one. That string ("przy recepcji", "obok windy") is far
-    // more useful for picking between two AEDs than a street address
-    // would be, because by this point you can already see the street.
+    // Where the device hangs ("przy recepcji") beats a street address
+    // here - by this point you can see the street.
+    //
+    // Truncated because Menu2 is native: fixed size, no wrapping, so a
+    // 60-character description runs off both edges. TextFit can't help,
+    // it needs a Dc and this text is drawn by the system.
     private function labelFor(aed as Lang.Dictionary) as Lang.String {
         var loc = aed[:loc] as Lang.String or Null;
-        if (loc != null && !loc.equals("")) {
-            return loc;
+        if (loc == null || loc.equals("")) {
+            return strAedFallback;
         }
-        return strAedFallback;
+        return shorten(loc, titleBudget());
     }
 
-    // Subtitle: live distance, then whatever would stop you getting to
-    // it - restricted access first, opening hours second.
+    // Distance, then what would stop you getting in. Hours before
+    // access because they matter more often - a door that locks at
+    // 17:00 is not a destination at 3 a.m. The tile builder already
+    // stripped ":00", which is what made this line fit.
     private function subtitleFor(aed as Lang.Dictionary) as Lang.String {
         var dist = aed[:dist] as Lang.Double;
         var text = dist.format("%.0f") + " m";
 
-        var access = aed[:access] as Lang.String or Null;
-        if (access != null && access.equals("p")) {
-            text += " | " + strAccessPrivate;
-        } else if (access != null && access.equals("c")) {
-            text += " | " + strAccessCustomers;
-        }
-
         var hours = aed[:hours] as Lang.String or Null;
         if (hours != null && !hours.equals("")) {
-            text += " | " + hours;
+            text += " - " + hours;
         }
-        return text;
+
+        var access = aed[:access] as Lang.String or Null;
+        if (access != null && access.equals("p")) {
+            text += " - " + strAccessShortPrivate;
+        } else if (access != null && access.equals("c")) {
+            text += " - " + strAccessShortCustomers;
+        }
+        return shorten(text, subtitleBudget());
+    }
+
+    // Characters per menu line. Divisors are empirical - Menu2 gives no
+    // way to measure its font - and deliberately pessimistic.
+    private function titleBudget() as Lang.Number {
+        return System.getDeviceSettings().screenWidth / 18;
+    }
+
+    private function subtitleBudget() as Lang.Number {
+        return System.getDeviceSettings().screenWidth / 11;
+    }
+
+    // Cuts on a word boundary when one is close to the limit.
+    private function shorten(text as Lang.String, maxChars as Lang.Number) as Lang.String {
+        if (text.length() <= maxChars) {
+            return text;
+        }
+        if (maxChars <= 4) {
+            return text.substring(0, maxChars) as Lang.String;
+        }
+
+        var cut = maxChars - 3;
+        var chars = text.toCharArray();
+        // Give up quickly rather than cutting a long word to nothing.
+        for (var i = cut; i > cut - 8 && i > 0; i--) {
+            if (chars[i] == ' ') {
+                cut = i;
+                break;
+            }
+        }
+        // Three dots, not U+2026: glyph coverage varies across Garmin
+        // fonts, same reason the tile builder folds diacritics.
+        return (text.substring(0, cut) as Lang.String) + "...";
     }
 }
 
@@ -139,9 +170,7 @@ class AedMenuDelegate extends WatchUi.Menu2InputDelegate {
     }
 
     function onSelect(item as WatchUi.MenuItem) as Void {
-        // Retarget immediately and go back to the arrow. No confirmation
-        // step: the list is already the deliberate path, and the detail
-        // screen is one MENU press away from where this lands.
+        // No confirmation step: the list is already the deliberate path.
         view.selectAed(item.getId() as Lang.Number);
         view.setCovered(false);
         WatchUi.popView(WatchUi.SLIDE_DOWN);

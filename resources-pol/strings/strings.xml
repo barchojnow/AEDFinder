@@ -26,6 +26,9 @@
     <string id="AccessCustomers">tylko dla klientow</string>
     <string id="AccessPrivate">dostep ograniczony</string>
     <string id="AccessUnknown">dostep nieznany</string>
+    <!-- Krotkie formy do jednoliniowego podtytulu w Menu2. -->
+    <string id="AccessShortCustomers">klienci</string>
+    <string id="AccessShortPrivate">ograniczony</string>
     <string id="Indoor">wewnatrz</string>
     <string id="Outdoor">na zewnatrz</string>
     <string id="Level">pietro </string>

@@ -1,6 +1,6 @@
 # AEDFinder
 
-A Garmin Connect IQ **widget** that points you to the nearest
+A Garmin Connect IQ **watch app** that points you to the nearest
 **automated external defibrillator (AED)**. It shows a rotating arrow
 and the live distance, buzzes when it finds one and again when you
 arrive, lets you pick from the five nearest, and tells you the things
@@ -32,7 +32,7 @@ exposes exactly three things:
 |---|---|
 | `/api/v1/tile/{z}/{x}/{y}.mvt` | Mapbox Vector Tile — protobuf, gzipped. Monkey C has no decoder and no practical access to raw response bytes. |
 | `/api/v1/node/{id}` | Needs an id you don't have yet. It answers "what is this?", not "what is near me?". |
-| `/api/v1/countries/{code}.geojson` | The entire country in one file — megabytes, against a widget heap measured in tens of kilobytes. |
+| `/api/v1/countries/{code}.geojson` | The entire country in one file — megabytes, against an app heap measured in tens of kilobytes. |
 
 Overpass would answer the question directly, and ZabkaFinder used it
 until the primary instance started rejecting legitimate requests with
@@ -49,7 +49,7 @@ anyone asks it.
 
 1. **A scheduled job cuts the country into tiles.** `tools/build_tiles.py`,
    run daily by GitHub Actions, downloads `PL.geojson` from OpenAEDMap
-   and buckets every defibrillator into a fixed 0.05° grid — one small
+   and buckets every defibrillator into a fixed 0.03° grid — one small
    JSON file per non-empty cell, published to GitHub Pages. The tiles
    are never committed: they're deployed straight from the workflow
    artifact, so a few thousand regenerated files a night don't turn the
@@ -57,26 +57,48 @@ anyone asks it.
 
 2. **The watch computes its own filename.** Given a GPS fix,
    `AedTiles.cellIndex()` floors the coordinates into a cell and the
-   client fetches `pl/1044/420.json`. One request, ~1–3 KB, no query
-   string, no rate limit, no origin server — a CDN edge answers it.
+   client fetches `pl/1740/700.json`. One request, a few hundred bytes
+   in most of the country, no query string, no rate limit, no origin
+   server — a CDN edge answers it.
 
 3. **The margin is what makes it one request.** Each cell file also
-   contains the AEDs lying up to 0.02° north/south and 0.04° east/west
-   *outside* it. Because that margin (2224 m and 2556 m at Poland's
-   northern edge) is wider than the 2000 m search radius, every AED
+   contains the AEDs lying up to 0.015° north/south and 0.026° east/west
+   *outside* it. Because that margin (1668 m and 1662 m at Poland's
+   northern edge) is wider than the 1500 m search radius, every AED
    within range of *any* point in the cell is in that cell's file —
    including when you're standing hard against a border. Without it the
    watch would need up to four requests and would still miss AEDs
    diagonally across a corner.
 
-4. **A refresh only happens when you leave the cell.** ZabkaFinder
+4. **The 85 densest tiles are thinned; the other 22,427 are not.** A tile
+   has to cover its whole cell plus the margin, so in central Warsaw it
+   contained every defibrillator for kilometres — 51 KB, against a
+   median of 513 B. Shrinking the grid barely helped: at this radius the
+   margin alone forces every tile to span ~3.3 × 3.6 km, so ten-times
+   smaller cells still peaked at 25 KB while total data grew from 4 MB
+   to 103 MB.
+
+   So the grid is sized for cost and the tail is capped at 70 entries,
+   by **spatial thinning** rather than by distance to the cell centre.
+   The obvious rule — keep the 70 nearest the centre — was implemented,
+   measured, and thrown away: it left someone standing in a cell corner
+   up to a kilometre further from a defibrillator than they really were,
+   because the centre is where the generator can reason about, not where
+   the user is. Thinning drops an AED only when another kept one lies
+   within `spacing` of it, so for *any* position the nearest kept AED is
+   at most `spacing` further than the nearest real one — bounded by
+   construction rather than small on average. Measured over Poland: 85
+   tiles capped (0.38%), no position anywhere left without an AED in
+   range, and a worst case of 419 m against a median of 0.
+
+5. **A refresh only happens when you leave the cell.** ZabkaFinder
    re-searched every 100 m of walking, throttled to once per 30 s,
    because Nominatim's answer depended on exactly where you asked from.
    Here it cannot: while you remain in one cell the loaded tile is
    already provably complete, so another request could not return
    anything new. An hour walking around a city block costs one request.
 
-5. **Tiles are kept in `Application.Storage`.** Up to three cells,
+6. **Tiles are kept in `Application.Storage`.** Up to three cells,
    expiring after 30 days. This is the one feature with no ZabkaFinder
    counterpart, and the reason is the use case, not the code: a shop
    finder that needs your phone is inconvenient, a defibrillator finder
@@ -86,7 +108,7 @@ anyone asks it.
    "offline data" while serving one, so nobody runs somewhere on
    day-old coordinates without knowing.
 
-6. **The nearest AED is targeted automatically, and the watch buzzes.**
+7. **The nearest AED is targeted automatically, and the watch buzzes.**
    One long pulse on the first lock of the session, so you can raise
    your wrist already knowing there's something to walk to. A double
    pulse on arrival within 25 m, exactly once per approach (the latch
@@ -95,14 +117,14 @@ anyone asks it.
    differ in *rhythm*, not just length — through a sleeve that's the
    only difference a wrist reliably feels.
 
-7. **Hybrid heading.** While walking (≥ 1 m/s) the arrow follows the GPS
+8. **Hybrid heading.** While walking (≥ 1 m/s) the arrow follows the GPS
    course-over-ground, which is immune to compass miscalibration and
    wrist tilt; standing still, the magnetic compass takes over. Watches
    with no compass at all (Forerunner 55) use the GPS course from a
    gentle walking pace. Until *some* heading exists the arrow stays gray
    — a meaningless direction is worse than none.
 
-8. **The screen carries the information the arrow can't.** Once a target
+9. **The screen carries the information the arrow can't.** Once a target
    is locked, the top of the display shows restricted access in orange,
    plus indoors/floor/hours. **MENU** opens the full detail screen:
    access, placement, opening hours and the free-text
@@ -110,11 +132,11 @@ anyone asks it.
    behind a locked door at 3 a.m. is not a destination, and you should
    learn that before setting off rather than on arrival.
 
-9. **HTTP 404 is an answer, not an error.** No file for a cell means the
+10. **HTTP 404 is an answer, not an error.** No file for a cell means the
    generator found no defibrillator near it. Treating that as a failure
-   would put the widget in a retry loop over a settled question.
+   would put the app in a retry loop over a settled question.
 
-10. **Error messages are rules, not lookup tables.** HTTP statuses are
+11. **Error messages are rules, not lookup tables.** HTTP statuses are
     positive, Connect IQ transport errors are negative — so `-104`
     becomes "connect your phone", every other negative code becomes "no
     internet", and positive codes are shown with their number because
@@ -128,7 +150,7 @@ anyone asks it.
 | **START** / tap | list of the 5 nearest AEDs | keep navigating to your pick |
 | **MENU** / long press | details of the current target | open the list instead |
 
-The fastest path — open the widget, follow the arrow — needs no input at
+The fastest path — open the app, follow the arrow — needs no input at
 all, because the nearest AED is targeted automatically. Every button
 belongs to the deliberate path, so a keypress can cost a screen without
 costing anyone time in an emergency.
@@ -208,7 +230,7 @@ user is told "no AED nearby" while standing next to a defibrillator.
 
 So the agreement is pinned rather than assumed. `tools/grid_vectors.json`
 holds 16 vectors — real Polish cities, plus a deliberate over-supply of
-exact cell boundaries, because 0.05 has no exact binary representation
+exact cell boundaries, because the cell size has no exact binary representation
 and a coordinate landing on an edge is where a 32-bit/64-bit mismatch or
 a floor-vs-truncate mistake shows up first. `tools/check_grid.py` runs
 **before the download** in the data workflow and asserts four things:
@@ -230,7 +252,21 @@ implementations agree with each other.
 
 ## Tests
 
-### Python — 46 tests, `pytest`
+**Both suites, one command:**
+
+```powershell
+.\tools\run-tests.ps1
+```
+
+It runs the Python half first — eight seconds, no simulator — and stops
+there if it fails, for the same reason the data workflow checks the grid
+before downloading 15 MB: the cheap check gates the expensive one. It
+also covers what the device tests structurally cannot see, since the
+grid exists in both languages and only `check_grid.py` compares them.
+`-SkipPython` runs just the devices, `-Devices @()` just the Python,
+`-Force` runs the devices anyway after a Python failure.
+
+### Python — 48 tests, `pytest`
 
 ```bash
 pip install -r requirements-dev.txt
@@ -248,7 +284,7 @@ corners and edges, where a random point almost never lands and where the
 margin is the only thing standing between the user and a wrong answer —
 and brute-forces the property the whole design rests on:
 
-> for any position P and any AED within 2000 m of P, that AED appears in
+> for any position P and any AED within 1500 m of P, that AED appears in
 > the tile file P's cell index names.
 
 It checks this by exhaustive search rather than by re-deriving the
@@ -290,7 +326,7 @@ They use the Connect IQ test framework: functions are annotated
 silently. Everything else in this app fails loudly — no fix, no phone,
 an error on screen — but a broken cache only shows up once the network
 is already gone, which is precisely the situation it exists for. Nobody
-finds that by using the widget normally. It writes to real Storage in
+finds that by using the app normally. It writes to real Storage in
 the simulator, clears the key before each test and leaves nothing
 behind.
 

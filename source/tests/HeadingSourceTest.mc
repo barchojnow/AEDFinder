@@ -1,17 +1,13 @@
 import Toybox.Lang;
 import Toybox.Test;
 
-// Unit tests for the hybrid heading rules.
+// These exist because the extraction made them possible: inlined in
+// the view, the only way to check which source drove the arrow was to
+// walk outside with a watch.
 //
-// These exist because the extraction made them possible. While this
-// logic was inlined in the view it was reachable only through
-// Position.Info and Sensor.Info, so the only way to check "does the
-// arrow follow the compass or the GPS right now" was to walk outside
-// with a watch. As a plain class it is a handful of assertions - and
-// the rules are worth asserting, because every one of them is a
-// tradeoff that looks arbitrary until it is wrong: an arrow that snaps
-// to north when you stop, or that trusts a miscalibrated compass while
-// you are running, sends someone the wrong way during an emergency.
+// Every rule here is a tradeoff that looks arbitrary until it's wrong -
+// an arrow snapping to north when you stop, or trusting a miscalibrated
+// compass while running, sends someone the wrong way.
 module HeadingSourceTest {
 
     const NORTH = 0.0f;

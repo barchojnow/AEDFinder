@@ -1,8 +1,23 @@
 <#
 .SYNOPSIS
-    Runs the Connect IQ unit tests across several devices in one go.
+    Runs the whole test suite: the Python half, then the Connect IQ half
+    across several devices.
 
 .DESCRIPTION
+    Two suites, one command, in the order that fails fastest.
+
+    The Python half runs first - the grid check plus the generator tests,
+    about eight seconds, no simulator needed. It gates the device half
+    for the same reason the data workflow checks the grid before
+    downloading 15 MB: there is no point spending a minute on simulator
+    restarts to confirm a failure the cheap check already found. It also
+    covers something the device tests structurally cannot see - the grid
+    exists in both languages and must agree, and check_grid.py is the
+    only thing that compares them.
+
+    Use -SkipPython to run only the device half, or -Force to run it even
+    when Python failed.
+
     The Connect IQ simulator only ever simulates one device at a time, so
     "all devices at once" means a sequential loop: build a unit-test
     binary per device, run it, collect the result.
@@ -33,9 +48,11 @@
     API (fenix5), touch (venu2), newest hardware (fenix847mm).
 
 .EXAMPLE
-    .\tools\run-tests.ps1
+    .\tools\run-tests.ps1                      # everything
     .\tools\run-tests.ps1 -Devices fenix5,venu2
     .\tools\run-tests.ps1 -All                 # every product in manifest.xml
+    .\tools\run-tests.ps1 -SkipPython          # device half only
+    .\tools\run-tests.ps1 -Devices @()         # Python half only
     .\tools\run-tests.ps1 -KeepSimulator       # reuse one instance (fast, flaky)
 #>
 
@@ -52,7 +69,19 @@ param(
     [int]      $Retries = 2,
     # Reuse a single simulator instance. Faster, but only reliable when
     # every run targets the same device.
-    [switch]   $KeepSimulator
+    [switch]   $KeepSimulator,
+    # Skip the Python half (grid check + generator tests).
+    [switch]   $SkipPython,
+    # Run the device tests even when the Python half failed. Off by
+    # default: a broken grid or generator makes the on-device results
+    # meaningless, and finding that out costs a minute of simulator
+    # restarts.
+    [switch]   $Force,
+    # Print every line the compiler and the test runner produce. Off by
+    # default: 77 passing tests across four devices is over 600 lines of
+    # "PASS", which buries the one line that matters on the run where
+    # something breaks.
+    [switch]   $ShowOutput
 )
 
 $ErrorActionPreference = 'Stop'
@@ -60,40 +89,82 @@ $project = Resolve-Path "$PSScriptRoot\.."
 $jungle  = Join-Path $project 'monkey.jungle'
 $outDir  = Join-Path $project 'bin\test'
 
-# Developer key: usually kept outside the repo (it must never be
-# committed). Look in the usual spots unless one was passed in.
-if (-not $DeveloperKey) {
-    $candidates = @(
-        "$project\..\..\developer_key",   # vs_projects\developer_key
-        "$project\..\developer_key",      # aed_finder\developer_key
-        "$env:APPDATA\Garmin\ConnectIQ\developer_key"
-    )
-    $DeveloperKey = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
-}
-if (-not $DeveloperKey -or -not (Test-Path $DeveloperKey)) {
-    throw "Developer key not found. Pass it explicitly: .\tools\run-tests.ps1 -DeveloperKey C:\path\to\developer_key"
-}
-$DeveloperKey = (Resolve-Path $DeveloperKey).Path
-Write-Host "Developer key: $DeveloperKey" -ForegroundColor DarkGray
+$results = @()
 
-# Locate the active SDK the same way the VS Code extension does.
-$sdkCfg = Join-Path $env:APPDATA 'Garmin\ConnectIQ\current-sdk.cfg'
-if (Test-Path $sdkCfg) {
-    $sdk = (Get-Content $sdkCfg -Raw).Trim()
-} else {
-    $sdk = (Get-ChildItem "$env:APPDATA\Garmin\ConnectIQ\Sdks" -Directory |
-            Sort-Object Name -Descending | Select-Object -First 1).FullName
-}
-$monkeyc   = Join-Path $sdk 'bin\monkeyc.bat'
-$monkeydo  = Join-Path $sdk 'bin\monkeydo.bat'
-$simulator = Join-Path $sdk 'bin\simulator.exe'
+# --- the Python half ------------------------------------------------------
+#
+# Runs first because it is fast and needs no simulator. The same
+# reasoning as the data workflow, which checks the grid before
+# downloading 15 MB: let the cheap check gate the expensive one.
+#
+# It also covers the failure the device tests cannot see. The grid is
+# implemented in both languages and they must agree; check_grid.py is
+# what compares them, and it only exists on this side.
+if (-not $SkipPython) {
+    Write-Host "`n=== python ===" -ForegroundColor Cyan
 
-if ($All) {
-    $Devices = ([xml](Get-Content (Join-Path $project 'manifest.xml'))).
-        manifest.application.products.product.id
-}
+    # `py` is the Windows launcher and the most reliable way in; fall
+    # back to whatever `python` resolves to elsewhere.
+    $py = if (Get-Command py -ErrorAction SilentlyContinue) { 'py' } else { 'python' }
 
-New-Item -ItemType Directory -Force -Path $outDir | Out-Null
+    $pythonOk = $true
+    $started = Get-Date
+
+    # Both halves stay silent while they pass and print everything the
+    # moment they don't - the same rule the device loop follows below.
+    $gridOutput = & $py (Join-Path $project 'tools\check_grid.py') 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        $pythonOk = $false
+        $gridOutput | Write-Host
+    } elseif ($ShowOutput) {
+        $gridOutput | Write-Host
+    } else {
+        Write-Host '  grid check ok' -ForegroundColor Green
+    }
+
+    if ($pythonOk) {
+        # From the project root, with no path argument, so pytest.ini's
+        # own `testpaths` decides what to collect. Passing a path here
+        # would override it and drag in bin/ and gen/.
+        Push-Location $project
+        try { $pytestOutput = & $py -m pytest -q 2>&1 } finally { Pop-Location }
+        $pytestExit = $LASTEXITCODE
+
+        if ($pytestExit -eq 5) {
+            # pytest's "no tests collected" - almost always a missing
+            # install rather than an empty suite.
+            Write-Host '  pytest collected nothing. Install it with:' -ForegroundColor Yellow
+            Write-Host '    py -m pip install -r requirements-dev.txt' -ForegroundColor Yellow
+            $pythonOk = $false
+        } elseif ($pytestExit -ne 0) {
+            $pythonOk = $false
+            $pytestOutput | Write-Host
+        } elseif ($ShowOutput) {
+            $pytestOutput | Write-Host
+        } else {
+            # The tally line only; the progress dots say nothing useful.
+            $tallyLine = $pytestOutput |
+                Where-Object { "$_" -match '\d+ passed' } | Select-Object -Last 1
+            Write-Host "  $($tallyLine -replace '\s+$', '')" -ForegroundColor Green
+        }
+    }
+
+    $results += [pscustomobject]@{
+        Device  = 'python'
+        Result  = if ($pythonOk) { 'PASSED' } else { 'FAILED' }
+        Seconds = [int]((Get-Date) - $started).TotalSeconds
+    }
+
+    if (-not $pythonOk -and -not $Force) {
+        Write-Host "`nPython tests failed - skipping the device suite." -ForegroundColor Red
+        Write-Host "A broken grid or generator makes the on-device results" -ForegroundColor DarkGray
+        Write-Host "meaningless. Use -Force to run them anyway, or" -ForegroundColor DarkGray
+        Write-Host "-SkipPython to ignore this half entirely." -ForegroundColor DarkGray
+        Write-Host "`n================ SUMMARY ================" -ForegroundColor Yellow
+        $results | Format-Table -AutoSize
+        exit 1
+    }
+}
 
 # The simulator's IPC listener. monkeydo's shell.exe scans this range to
 # find it - which is also why a leftover shell from the previous device
@@ -147,6 +218,41 @@ function Stop-CiqShell {
         } |
         ForEach-Object { try { $_.Kill() } catch { } }
 }
+
+# Developer key: usually kept outside the repo (it must never be
+# committed). Look in the usual spots unless one was passed in.
+if (-not $DeveloperKey) {
+    $candidates = @(
+        "$project\..\..\developer_key",   # vs_projects\developer_key
+        "$project\..\developer_key",      # aed_finder\developer_key
+        "$env:APPDATA\Garmin\ConnectIQ\developer_key"
+    )
+    $DeveloperKey = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+}
+if (-not $DeveloperKey -or -not (Test-Path $DeveloperKey)) {
+    throw "Developer key not found. Pass it explicitly: .\tools\run-tests.ps1 -DeveloperKey C:\path\to\developer_key"
+}
+$DeveloperKey = (Resolve-Path $DeveloperKey).Path
+Write-Host "Developer key: $DeveloperKey" -ForegroundColor DarkGray
+
+# Locate the active SDK the same way the VS Code extension does.
+$sdkCfg = Join-Path $env:APPDATA 'Garmin\ConnectIQ\current-sdk.cfg'
+if (Test-Path $sdkCfg) {
+    $sdk = (Get-Content $sdkCfg -Raw).Trim()
+} else {
+    $sdk = (Get-ChildItem "$env:APPDATA\Garmin\ConnectIQ\Sdks" -Directory |
+            Sort-Object Name -Descending | Select-Object -First 1).FullName
+}
+$monkeyc   = Join-Path $sdk 'bin\monkeyc.bat'
+$monkeydo  = Join-Path $sdk 'bin\monkeydo.bat'
+$simulator = Join-Path $sdk 'bin\simulator.exe'
+
+if ($All) {
+    $Devices = ([xml](Get-Content (Join-Path $project 'manifest.xml'))).
+        manifest.application.products.product.id
+}
+
+New-Item -ItemType Directory -Force -Path $outDir | Out-Null
 
 function Stop-Simulator {
     Stop-CiqShell
@@ -220,6 +326,55 @@ function Start-Simulator {
     }
 }
 
+# Every distinct compiler warning seen across all devices, so the same
+# one from four builds is reported once. These were previously filtered
+# out entirely, which hid a real bug: "Statement is not reachable" in
+# AedCache was the compiler correctly pointing out that a cast had made
+# a corruption guard dead code.
+$script:Warnings = [System.Collections.Generic.HashSet[string]]::new()
+
+# Pulls the failing tests out of a monkeydo run, with the ERROR lines
+# that explain them. Returns nothing when everything passed.
+function Get-TestFailures {
+    param([string] $Output)
+
+    $failures = @()
+    $current = $null
+    $detail = @()
+
+    foreach ($line in ($Output -split "`r?`n")) {
+        if ($line -match '^Executing test (\S+)\.\.\.') {
+            $current = $Matches[1]
+            $detail = @()
+        } elseif ($line -match '^FAIL\s*$') {
+            if ($current) {
+                $failures += [pscustomobject]@{ Test = $current; Detail = $detail }
+            }
+            $current = $null
+        } elseif ($line -match '^(PASS|ERROR)') {
+            if ($line -match '^ERROR') { $detail += $line.Trim() }
+            if ($line -match '^PASS') { $current = $null; $detail = @() }
+        } elseif ($current -and $line.Trim() -ne '') {
+            $detail += $line.Trim()
+        }
+    }
+    return $failures
+}
+
+# "Ran 77 tests" / "passed=77" -> a single line worth printing.
+function Get-TestTally {
+    param([string] $Output)
+
+    $m = [regex]::Match($Output, '(?m)^(PASSED|FAILED)\s*\(passed=(\d+),\s*failed=(\d+),\s*errors=(\d+)\)')
+    if (-not $m.Success) { return $null }
+    return [pscustomobject]@{
+        Line   = $m.Value.Trim()
+        Passed = [int]$m.Groups[2].Value
+        Failed = [int]$m.Groups[3].Value
+        Errors = [int]$m.Groups[4].Value
+    }
+}
+
 # Runs monkeydo with a hard ceiling, returning its output or $null on
 # timeout. The whole process tree is killed on timeout: monkeydo.bat is
 # a wrapper around a java process, and killing only the wrapper leaves
@@ -260,16 +415,28 @@ if ($KeepSimulator -and
     Start-Simulator
 }
 
-$results = @()
-
 foreach ($device in $Devices) {
     Write-Host "`n=== $device ===" -ForegroundColor Cyan
     $prg = Join-Path $outDir "AEDFinderTest-$device.prg"
     $started = Get-Date
 
-    & $monkeyc -f $jungle -o $prg -y $DeveloperKey -d $device --unit-test 2>&1 |
-        Where-Object { $_ -notmatch 'WARNING' }
+    $buildOutput = & $monkeyc -f $jungle -o $prg -y $DeveloperKey -d $device --unit-test 2>&1
+    if ($ShowOutput) { $buildOutput | Write-Host }
+
+    # Warnings are collected rather than printed: the same one appears
+    # once per device, and four copies of it reads like noise until it
+    # gets ignored. Shown once, deduplicated, after the run.
+    foreach ($line in $buildOutput) {
+        $text = "$line"
+        if ($text -match 'WARNING|ERROR') {
+            # Drop the device-specific prefix so the same warning from
+            # four builds collapses into one entry.
+            [void]$script:Warnings.Add(($text -replace '^\s*\w+:\s*', '').Trim())
+        }
+    }
+
     if ($LASTEXITCODE -ne 0) {
+        if (-not $ShowOutput) { $buildOutput | Write-Host }
         $results += [pscustomobject]@{
             Device = $device; Result = 'BUILD FAILED'; Seconds = 0
         }
@@ -320,19 +487,56 @@ foreach ($device in $Devices) {
         continue
     }
 
-    Write-Host $output
+    if ($ShowOutput) { Write-Host $output }
 
-    $summary = $output -split "`r?`n" |
-        Select-String -Pattern '^(PASSED|FAILED)' | Select-Object -First 1
+    $tally = Get-TestTally -Output $output
+    if ($null -eq $tally) {
+        Write-Host '  no result line - see the log' -ForegroundColor Red
+        Write-Host "  $(Join-Path $outDir "$device.out.log")" -ForegroundColor DarkGray
+        $results += [pscustomobject]@{
+            Device = $device; Result = 'NO RESULT'; Seconds = $elapsed
+        }
+        continue
+    }
+
+    # Only failures get printed. A passing device is one line, because
+    # 77 lines of "PASS" tell you nothing you can't read from the tally,
+    # and they bury the run where something actually broke.
+    if ($tally.Failed -eq 0 -and $tally.Errors -eq 0) {
+        Write-Host "  $($tally.Passed) tests passed" -ForegroundColor Green
+    } else {
+        Write-Host "  $($tally.Failed) failed, $($tally.Errors) errors, of $($tally.Passed + $tally.Failed)" `
+            -ForegroundColor Red
+        foreach ($failure in (Get-TestFailures -Output $output)) {
+            Write-Host "    $($failure.Test)" -ForegroundColor Red
+            foreach ($line in $failure.Detail) {
+                Write-Host "      $line" -ForegroundColor DarkGray
+            }
+        }
+        Write-Host "    full log: $(Join-Path $outDir "$device.out.log")" -ForegroundColor DarkGray
+    }
+
     $results += [pscustomobject]@{
         Device  = $device
-        Result  = if ($summary) { $summary.Line.Trim() } else { 'NO RESULT' }
+        Result  = $tally.Line
         Seconds = $elapsed
     }
 }
 
 if (-not $KeepSimulator) {
     Stop-Simulator
+}
+
+# Compiler warnings, once each rather than once per device. Kept out of
+# the per-device output above so they don't scroll past, and shown even
+# on a fully green run - "Statement is not reachable" was a real bug
+# hiding behind a green suite.
+if ($script:Warnings.Count -gt 0) {
+    Write-Host "`n---------- COMPILER WARNINGS ($($script:Warnings.Count) unique) ----------" `
+        -ForegroundColor DarkYellow
+    foreach ($warning in ($script:Warnings | Sort-Object)) {
+        Write-Host "  $warning" -ForegroundColor DarkYellow
+    }
 }
 
 Write-Host "`n================ SUMMARY ================" -ForegroundColor Yellow

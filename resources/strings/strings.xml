@@ -34,6 +34,10 @@
     <string id="AccessCustomers">customers only</string>
     <string id="AccessPrivate">restricted access</string>
     <string id="AccessUnknown">access unknown</string>
+    <!-- Short forms for the Menu2 subtitle, which is one native,
+         non-shrinking line as narrow as 208 px. -->
+    <string id="AccessShortCustomers">customers</string>
+    <string id="AccessShortPrivate">restricted</string>
     <string id="Indoor">indoors</string>
     <string id="Outdoor">outdoors</string>
     <!-- Prefixed directly to the floor number, e.g. "floor 1". -->

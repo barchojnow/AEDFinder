@@ -1,31 +1,22 @@
 #!/usr/bin/env python3
-"""Guards the one invariant that spans both languages in this project.
+"""Guards the one invariant spanning both languages.
 
-The tile grid is implemented twice - in `tools/build_tiles.py`, which
-runs in CI and decides what each published file is called, and in
-`source/AedTiles.mc`, which runs on the watch and decides what file to
-ask for. There is no way to share the code: CI cannot run Monkey C and
-a watch cannot read a Python file.
+The grid is implemented twice - build_tiles.py names the published
+files, AedTiles.mc decides what the watch asks for - and the code can't
+be shared: CI can't run Monkey C, a watch can't read Python.
 
-If the two ever disagree the build still succeeds, Pages still deploys,
-the watch still gets HTTP 200 for some file - and every user is told
-"no AED nearby" while standing next to a defibrillator. Nothing goes
-red. That is why this check exists and why it runs before the download
-in the data workflow rather than after.
+If they disagree, nothing goes red. The build succeeds, Pages deploys,
+the watch gets HTTP 200 for some file, and every user is told "no AED
+nearby" while standing next to a defibrillator.
 
-It does two things:
+So: parse the constants out of AedTiles.mc and compare them, then
+re-derive every vector in grid_vectors.json. AedTilesTest.mc asserts
+the same vectors on-device, so agreeing with the fixture on both sides
+means agreeing with each other.
 
-1. Parses the constants out of AedTiles.mc and compares them
-   numerically with the Python ones.
-2. Re-derives every vector in grid_vectors.json with the Python
-   implementation. The Monkey C unit test (source/tests/AedTilesTest.mc)
-   asserts the same vectors on-device, so agreeing with the fixture in
-   both places means agreeing with each other.
-
-Boundary vectors matter most and are deliberately over-represented:
-0.05 has no exact binary representation, so a coordinate landing
-exactly on a cell edge is where a 32-bit/64-bit mismatch or a
-floor-vs-truncate mistake would first show up.
+Boundary vectors are over-represented: the cell size has no exact
+binary representation, so an edge is where a 32/64-bit mismatch or a
+floor-vs-truncate mistake shows up first.
 """
 
 from __future__ import annotations
@@ -45,7 +36,7 @@ TILES_MC = ROOT / "source" / "AedTiles.mc"
 TILES_TEST_MC = ROOT / "source" / "tests" / "AedTilesTest.mc"
 VECTORS = Path(__file__).parent / "grid_vectors.json"
 
-# ["name", 52.2297d, 21.0122d, 1044, 420],
+# ["name", 52.2297d, 21.0122d, 1740, 700],
 _MC_VECTOR_RE = re.compile(
     r'\[\s*"([^"]+)"\s*,\s*(-?[\d.]+)d\s*,\s*(-?[\d.]+)d\s*,'
     r'\s*(-?\d+)\s*,\s*(-?\d+)\s*\]'
@@ -79,14 +70,13 @@ def check_constants() -> list[str]:
                 f"{name}: AedTiles.mc has {mc[name]}, build_tiles.py has {py_value}"
             )
 
-    # The Double suffix is not cosmetic. Without it Monkey C parses the
-    # literal as a 32-bit Float, and `lat / CELL_DEG` rounds differently
-    # than the 64-bit generator - which only ever bites near a cell
-    # boundary, i.e. rarely enough to reach users.
+    # Without the suffix Monkey C parses a 32-bit Float and rounds
+    # differently from the generator - only near a boundary, i.e.
+    # rarely enough to reach users.
     text = TILES_MC.read_text(encoding="utf-8")
     if not re.search(r"const\s+CELL_DEG\s*=\s*[\d.]+d\s*;", text):
         errors.append(
-            "CELL_DEG in AedTiles.mc must use the Double suffix (0.05d), "
+            "CELL_DEG in AedTiles.mc must use the Double suffix (e.g. 0.03d), "
             "otherwise the watch computes cell indices at 32-bit precision"
         )
     return errors
@@ -125,11 +115,8 @@ def check_vectors() -> list[str]:
 
 
 def check_watch_test_table() -> list[str]:
-    """The Monkey C test table must still be the fixture, verbatim.
-
-    Without this, someone could edit a vector in AedTilesTest.mc to make
-    a failing on-device test pass, and the two implementations would
-    part company with every check still green.
+    """The Monkey C table must still be the fixture, verbatim - or a
+    failing on-device test could be "fixed" by editing the expectation.
     """
     if not TILES_TEST_MC.exists():
         return [f"{TILES_TEST_MC} is missing"]
@@ -161,19 +148,12 @@ def check_watch_test_table() -> list[str]:
 
 
 def check_margin_covers_radius() -> list[str]:
-    """Re-checks the coverage guarantee against real cell geometry.
-
-    build_tiles.verify_margins() checks the margin at Poland's worst
-    latitude. This checks the property that actually matters: for the
-    least favourable point in a cell (a corner) and the least
-    favourable AED position, is the AED still inside the margin?
-    """
+    """Re-checks coverage across the full latitude range."""
     errors = []
     radius = build_tiles.SEARCH_RADIUS_M
 
     for lat in (49.0, 52.0, 54.9):
-        # Metres per degree at this latitude, using the same Earth
-        # radius as GeoMath.mc.
+
         m_per_deg_lat = math.radians(1.0) * build_tiles.EARTH_RADIUS_M
         m_per_deg_lon = m_per_deg_lat * math.cos(math.radians(lat))
 

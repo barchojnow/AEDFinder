@@ -3,21 +3,17 @@ import Toybox.Lang;
 import Toybox.Test;
 import Toybox.Time;
 
-// Unit tests for the offline cache.
+// The offline cache - the one path that fails silently. Everything else
+// fails loudly; a broken cache only shows up once the network is gone,
+// which is exactly what it exists for. Nobody finds that by using the
+// app normally.
 //
-// This is the path that matters most and is hardest to notice breaking.
-// Everything else in the app fails loudly - no fix, no phone, an error
-// on screen. A broken cache fails silently and only when the network is
-// already gone, which is exactly the situation it exists for: phone in
-// a rucksack, no signal in a stairwell, flat battery. Nobody discovers
-// that by using the widget normally.
-//
-// These tests write to real Storage in the simulator, so each one
-// clears the key first and the suite leaves nothing behind.
+// Writes to real Storage in the simulator, so each test clears the key
+// first and the suite leaves nothing behind.
 module AedCacheTest {
 
-    const CELL = "pl/1044/420.json";
-    const OTHER_CELL = "pl/1001/398.json";
+    const CELL = "pl/1740/700.json";
+    const OTHER_CELL = "pl/1668/664.json";
 
     function entry(id as Lang.String) as Lang.Array {
         return [52.23012, 21.01187, "y", 1, "0", "Recepcja", "24/7", id];
@@ -30,9 +26,8 @@ module AedCacheTest {
         return cache;
     }
 
-    // Writes a record straight into Storage, bypassing save(), so a test
-    // can construct states the API can't reach - notably a timestamp far
-    // in the past, since Time.now() cannot be moved.
+    // Bypasses save() to construct states the API can't reach - notably
+    // an old timestamp, since Time.now() can't be moved.
     function seedStorage(cache as AedCache, cellKey as Lang.String,
                          ageSeconds as Lang.Number) as Void {
         Application.Storage.setValue(cache.STORAGE_KEY, [
@@ -60,8 +55,8 @@ module AedCacheTest {
             logger.error("expected 2 entries, got " + restored.size());
             return false;
         }
-        // The wire format must survive Storage untouched, because the
-        // restore path feeds it back through AedClient.parseEntries.
+        // Must survive Storage untouched: the restore path feeds it
+        // back through AedClient.parseEntries.
         var first = restored[0] as Lang.Array;
         if (!(first[7] as Lang.String).equals("111")) {
             logger.error("entry came back altered: id " + first[7]);
@@ -80,10 +75,8 @@ module AedCacheTest {
         return true;
     }
 
-    // Only the matching cell will do. A neighbour's tile covers a
-    // different area, and the margin that guarantees completeness within
-    // the search radius is only valid for the cell it belongs to -
-    // serving it here would silently hide defibrillators.
+    // The margin only guarantees completeness for its own cell, so a
+    // neighbour's tile would silently hide defibrillators.
     (:test)
     function refusesToServeAnotherCellsTile(logger as Test.Logger) as Lang.Boolean {
         var cache = freshCache();
@@ -122,9 +115,8 @@ module AedCacheTest {
         return true;
     }
 
-    // A timestamp in the future means the watch's clock moved backwards
-    // - a timezone change, a manual set, a sync. The age arithmetic goes
-    // negative and would otherwise pass the "not too old" check.
+    // Clock moved backwards: age goes negative and would otherwise
+    // pass the "not too old" check.
     (:test)
     function rejectsATileFromTheFuture(logger as Test.Logger) as Lang.Boolean {
         var cache = freshCache();
@@ -212,9 +204,8 @@ module AedCacheTest {
 
     // --- robustness ---------------------------------------------------------
 
-    // Storage can hold whatever a previous version wrote, or a partially
-    // written value. None of it may take the widget down - the cache is
-    // an optimisation and the live tile is the source of truth.
+    // Storage can hold whatever a previous version wrote. None of it
+    // may take the app down.
     (:test)
     function survivesAValueOfTheWrongType(logger as Test.Logger) as Lang.Boolean {
         var cache = freshCache();
@@ -249,8 +240,7 @@ module AedCacheTest {
         return true;
     }
 
-    // Leaves Storage as the tests found it, so a test run doesn't hand
-    // the next launch of the real widget a tile full of fixtures.
+    // Don't hand the next real launch a tile full of fixtures.
     (:test)
     function cleanup(logger as Test.Logger) as Lang.Boolean {
         Application.Storage.deleteValue((new AedCache()).STORAGE_KEY);

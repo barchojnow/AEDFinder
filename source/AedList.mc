@@ -1,18 +1,14 @@
 import Toybox.Lang;
 
-// The collection of known defibrillators: filtering a freshly fetched
-// tile to the true circular radius, merging it with what was already
-// known, distance-sorting and menu queries. Pure data logic - no UI,
-// no networking, no storage.
+// The known defibrillators: radius filtering, merging, distance
+// sorting, menu queries. Pure data logic.
 //
-// Entries are Dictionaries {:lat, :lon, :access, :indoor, :level,
-// :loc, :hours, :id} plus a :dist key refreshed by sortByDistance().
-// Menu item ids are indices into this list, so sorting always happens
-// on the internal array itself.
+// Entries are {:lat, :lon, :access, :indoor, :level, :loc, :hours, :id}
+// plus :dist, refreshed by sortByDistance(). Menu ids are indices into
+// this array, so sorting must happen in place.
 class AedList {
 
-    // Fallback duplicate threshold, used only for entries that reached
-    // us without an OSM id.
+    // Fallback only, for entries that arrived without an OSM id.
     const DUPLICATE_EPSILON_M = 15.0;
 
     private var aeds as Lang.Array = [];
@@ -42,13 +38,10 @@ class AedList {
         var fresh = buildSorted(entries, lat, lon, radiusM);
         var freshCount = fresh.size();
 
-        // Merge instead of replace: previously known AEDs that are
-        // still within range survive a refresh, so the list only ever
-        // gains knowledge. This matters more here than in a shop
-        // finder - a cached defibrillator from ten minutes ago is
-        // still a defibrillator, and losing it because a request came
-        // back thin is not an acceptable failure mode. Fresh data wins
-        // on duplicates.
+        // Merge, don't replace: a defibrillator known ten minutes ago
+        // is still a defibrillator, and losing it because one response
+        // came back thin is not an acceptable failure. Fresh wins on
+        // duplicates.
         for (var i = 0; i < aeds.size(); i++) {
             var old = aeds[i] as Lang.Dictionary;
             var oLat = old[:lat] as Lang.Double;
@@ -66,20 +59,10 @@ class AedList {
         return freshCount;
     }
 
-    // Identity comparison, by OSM node id where one exists.
-    //
-    // ZabkaFinder deduplicated purely by proximity and documented the
-    // consequence: two genuinely distinct shops less than 25 m apart
-    // collapsed into one entry. For defibrillators that trade-off is
-    // wrong - a hospital lobby and the ward next to it can each have
-    // one a few metres apart, and dropping either could send someone
-    // to the wrong wall. The tile format carries the OSM id precisely
-    // so identity, not distance, decides.
-    //
-    // Ids are Strings, compared with equals(): OSM node ids exceed
-    // Connect IQ's 32-bit Number, so they never become integers
-    // anywhere in this app. Proximity survives only as a fallback for
-    // entries whose id didn't make it through (empty string).
+    // Identity, not proximity. A hospital lobby and the ward next to
+    // it can each have one a few metres apart; collapsing them by
+    // distance - as ZabkaFinder did - could send someone to the wrong
+    // wall. Ids are Strings because OSM ids exceed 32-bit Number.
     private function containsSame(list as Lang.Array, count as Lang.Number,
                                   candidate as Lang.Dictionary) as Lang.Boolean {
         var candidateId = candidate[:id] as Lang.String or Null;
@@ -102,10 +85,8 @@ class AedList {
         return false;
     }
 
-    // Re-sorts the whole list ascending by distance from (lat, lon),
-    // storing the fresh distance in each entry's :dist. Must operate on
-    // the internal array because menu ids are indices into it.
-    // Insertion sort - at most a few dozen entries.
+    // In place, because menu ids are indices into this array.
+    // Insertion sort: at most a few dozen entries.
     function sortByDistance(lat as Lang.Double, lon as Lang.Double) as Void {
         var sorted = [] as Lang.Array;
         for (var i = 0; i < aeds.size(); i++) {
@@ -127,9 +108,8 @@ class AedList {
         aeds = sorted;
     }
 
-    // Returns up to `max` AEDs for the selection menu, freshly
-    // re-sorted by distance from the current position (so menu ids
-    // keep matching internal indices).
+    // Re-sorted from the CURRENT position, so the menu isn't frozen at
+    // fetch time.
     function getNearest(max as Lang.Number, lat as Lang.Double, lon as Lang.Double) as Lang.Array {
         sortByDistance(lat, lon);
         var result = [] as Lang.Array;
@@ -140,8 +120,7 @@ class AedList {
         return result;
     }
 
-    // Filters raw entries down to radiusM around (lat, lon), sorted
-    // ascending by distance (insertion sort).
+    // Filter to radiusM, sorted ascending by distance.
     private function buildSorted(entries as Lang.Array, lat as Lang.Double,
                                  lon as Lang.Double, radiusM as Lang.Number) as Lang.Array {
         var list = [] as Lang.Array;

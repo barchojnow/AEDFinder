@@ -1,19 +1,15 @@
 import Toybox.Lang;
 import Toybox.Test;
 
-// Unit tests for the haptic state machines. The interesting rules here
-// are invisible from the outside - a latch, a hysteresis band, a
-// countdown - and the ones that matter most ("exactly one buzz per
-// approach", "exactly one buzz per session when the first AED is
-// found") can only be verified by counting vibrations. Hence the
-// injected fakes: no hardware, and no waiting 15 seconds for a timer.
+// The rules here are invisible from outside - a latch, a hysteresis
+// band, a countdown - and the ones that matter ("exactly one buzz per
+// approach") can only be checked by counting vibrations. Hence the
+// injected fakes: no hardware, no waiting 15 seconds for a timer.
 module ProximityAlertsTest {
 
-    // Counts buzzes per kind instead of performing them. Counting them
-    // separately is the point: the three patterns mean three different
-    // things to someone who isn't looking at the screen, so a test that
-    // only counted "some vibration happened" would pass while the watch
-    // said the wrong thing.
+    // Per kind, because the three patterns mean three different things
+    // to someone not looking at the screen - counting "some vibration
+    // happened" would pass while the watch said the wrong thing.
     class VibratorSpy {
         var found as Lang.Number = 0;
         var arrival as Lang.Number = 0;
@@ -70,10 +66,8 @@ module ProximityAlertsTest {
 
     // --- the found buzz --------------------------------------------------
 
-    // The point of this buzz is that the watch can be raised already
-    // knowing there is something to walk to. Firing it again on every
-    // background refresh would train people to ignore it, which would
-    // cost exactly when it matters, so the latch never re-arms.
+    // Firing again on every background refresh would train people to
+    // ignore it, so the latch never re-arms.
     (:test)
     function foundBuzzesOncePerSession(logger as Test.Logger) as Lang.Boolean {
         var f = new Fixture();

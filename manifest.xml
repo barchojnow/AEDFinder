@@ -1,6 +1,17 @@
 <?xml version="1.0"?>
 <iq:manifest version="3" xmlns:iq="http://www.garmin.com/xml/connectiq">
-    <iq:application id="18ce5c46bcae4f1291dbfac7f3358e80" type="widget" name="@Strings.AppName" entry="AedFinderApp" launcherIcon="@Drawables.LauncherIcon" minApiLevel="3.1.0">
+    <!--
+        type="watch-app", not "widget". Two reasons, and the first one
+        decides it: a widget on a Forerunner 55 gets 64 KB for code,
+        resources AND data together, which a dense city tile exceeds on
+        its own before anything is parsed. An app gets 128 KB there, and
+        proportionally more everywhere else.
+
+        The second is that widgets are a dead end. On System 5 devices
+        (Venu 2, Fenix 7 and later) they were superseded by glances, so
+        a watch-app is also where users now expect to find this.
+    -->
+    <iq:application id="18ce5c46bcae4f1291dbfac7f3358e80" type="watch-app" name="@Strings.AppName" entry="AedFinderApp" launcherIcon="@Drawables.LauncherIcon" minApiLevel="3.1.0">
         <iq:products>
             <!-- Fenix 5 series (the CIQ 3.1 floor of the app) -->
             <iq:product id="fenix5"/>

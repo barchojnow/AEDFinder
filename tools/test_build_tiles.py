@@ -1,19 +1,15 @@
 """Tests for the tile generator.
 
-The important one is `test_every_nearby_aed_lands_in_the_tile_the_watch_asks_for`.
-Everything else here checks that a field is parsed the way it should be;
-that one checks the property the whole single-request design rests on:
+Most check that a field is parsed correctly. The one that matters is
+`test_every_nearby_aed_lands_in_the_tile_the_watch_asks_for`:
 
     for any position P and any AED within SEARCH_RADIUS_M of P,
-    A appears in the tile file that P's cell index names.
+    that AED appears in the tile file P's cell index names.
 
-If that ever stops holding, the watch reports "no AED nearby" while
-standing next to one, and no other test in this project would notice. It
-is checked by brute force against randomly placed AEDs rather than by
-re-deriving the margin arithmetic, so a mistake in that arithmetic
-cannot also mark its own homework.
-
-Run with `pytest` from anywhere in the repository.
+If that stops holding, the watch says "no AED nearby" while standing
+next to one and nothing else here would notice. Checked by brute force
+rather than by re-deriving the margin arithmetic, so a mistake in that
+arithmetic can't mark its own homework.
 """
 
 from __future__ import annotations
@@ -26,14 +22,11 @@ import pytest
 
 import build_tiles as bt
 
-# Reserved by RFC 2606 and guaranteed never to resolve, so the download
-# failure tests are hermetic - they don't reach the network and can't be
-# broken by a resolver that returns a wildcard for typos.
+# RFC 2606 reserved, guaranteed never to resolve: hermetic.
 UNRESOLVABLE = "https://openaedmap.invalid/api/v1/countries/{code}.geojson"
 
-# Slot names for the wire format, mirroring AedClient.parseEntries on the
-# watch. Written out so that reordering the layout breaks these tests
-# loudly instead of silently reinterpreting every field.
+# Wire slots, mirroring AedClient.parseEntries. Named so a reordering
+# breaks these tests loudly instead of reinterpreting every field.
 LAT, LON, ACCESS, INDOOR, LEVEL, LOC, HOURS, OSM_ID = range(8)
 
 
@@ -50,9 +43,8 @@ def haversine(lat1, lon1, lat2, lon2):
 # --- field extraction ------------------------------------------------------
 
 def test_reads_coordinates_in_geojson_order(feature):
-    # GeoJSON is [lon, lat]; everything else in this project is
-    # [lat, lon]. Swapping them puts every Polish AED in Kazakhstan -
-    # and the arrow would point confidently at it.
+    # GeoJSON is [lon, lat]; everything else here is [lat, lon].
+    # Swapping puts every Polish AED in Kazakhstan.
     entry = bt.to_entry(feature(52.2297, 21.0122))
     assert entry[LAT] == 52.2297
     assert entry[LON] == 21.0122
@@ -119,6 +111,35 @@ def test_does_not_mistake_the_indoor_enum_for_a_description():
     assert bt.extract_location({"location": "indoor"}) == ""
 
 
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("24/7", "24/7"),
+        # The common case, and the one that made the menu line unreadable.
+        ("Mo-Fr 07:00-17:00", "Mo-Fr 07-17"),
+        ("Mo-Su 08:00-20:00", "Mo-Su 08-20"),
+        ("Mo-Fr 08:00-16:00; Sa 09:00-13:00", "Mo-Fr 08-16;Sa 09-13"),
+        # Half hours keep their minutes. Collapsing 07:30 to 07 would not
+        # be a shortening, it would be a false claim about when someone
+        # can get through the door.
+        ("Mo-Fr 07:30-17:00", "Mo-Fr 07:30-17"),
+        ("Mo-Fr 09:15-17:45", "Mo-Fr 09:15-17:45"),
+        ("", ""),
+    ],
+)
+def test_compresses_opening_hours_without_reinterpreting_them(raw, expected):
+    assert extract_hours_of(raw) == expected
+
+
+def extract_hours_of(raw):
+    return bt.extract_hours({"opening_hours": raw} if raw else {})
+
+
+def test_opening_hours_stay_within_the_length_cap():
+    monster = "Mo 08:00-16:00; Tu 08:00-16:00; We 08:00-16:00; Th 08:00-16:00"
+    assert len(extract_hours_of(monster)) <= bt.MAX_HOURS_CHARS
+
+
 def test_folds_diacritics():
     # Garmin's built-in fonts render these inconsistently, so they are
     # folded here rather than on the watch.
@@ -165,6 +186,29 @@ def test_rejects_features_without_usable_geometry(broken):
     assert bt.to_entry(broken) is None
 
 
+def test_flooring_goes_downwards_not_towards_zero():
+    # The mirror of AedTilesTest.flooringGoesDownwardsNotTowardsZero.
+    # int() truncates toward zero and would collapse a point just south
+    # of the equator into the same cell as its northern mirror. Poland
+    # never exposes this; extending the tile set would.
+    #
+    # Half a cell, not a fixed number of degrees, so retuning CELL_DEG
+    # can't turn this into an assertion about something else.
+    half = bt.CELL_DEG / 2
+    assert bt.cell_index(-half, 0.0)[0] == -1
+    assert bt.cell_index(half, 0.0)[0] == 0
+    assert bt.cell_index(0.0, -half)[1] == -1
+    assert bt.cell_index(0.0, half)[1] == 0
+
+
+def test_a_coordinate_exactly_on_a_cell_edge_belongs_to_the_upper_cell():
+    # One whole cell width is the *next* cell, not the current one. This
+    # is the convention the whole grid rests on, and the one an earlier
+    # test accidentally contradicted after CELL_DEG was retuned.
+    assert bt.cell_index(bt.CELL_DEG, 0.0)[0] == 1
+    assert bt.cell_index(2 * bt.CELL_DEG, 0.0)[0] == 2
+
+
 def test_rejects_coordinates_outside_the_world(feature):
     assert bt.to_entry(feature(931.0, 21.0)) is None
     assert bt.to_entry(feature(52.0, 999.0)) is None
@@ -172,11 +216,9 @@ def test_rejects_coordinates_outside_the_world(feature):
 
 # --- the download ----------------------------------------------------------
 
-# This step runs unattended at 03:40 against someone else's server, and
-# it is the only part of the pipeline that can fail for reasons outside
-# this repository. The first live run died on an `api.` subdomain that
-# does not exist, and said so in forty lines of urllib traceback with
-# the URL buried in the middle. These pin the diagnosis to the top.
+# The only step that can fail for reasons outside this repository. The
+# first live run died on an `api.` subdomain that doesn't exist and said
+# so in forty lines of traceback. These pin the diagnosis to the top.
 
 def test_reports_an_unreachable_host_with_the_url(monkeypatch, tmp_path):
     monkeypatch.setattr(bt, "COUNTRY_URL", UNRESOLVABLE)
@@ -269,8 +311,13 @@ def test_writes_sharded_cells_and_meta(build, feature):
     assert meta["aedCount"] == 3
     assert meta["grid"]["cellDeg"] == bt.CELL_DEG
 
-    warsaw = out / "pl" / "1044" / "420.json"
-    assert warsaw.exists(), "Warsaw cell was not written"
+    # Derived, not hard-coded: the grid constants are tuned from
+    # measurement and have changed once already, and a test that pins
+    # the old filename fails for a reason that has nothing to do with
+    # what it is checking.
+    i, j = bt.cell_index(52.2297, 21.0122)
+    warsaw = out / "pl" / str(i) / f"{j}.json"
+    assert warsaw.exists(), f"Warsaw cell pl/{i}/{j}.json was not written"
 
     payload = json.loads(warsaw.read_text(encoding="utf-8"))
     assert payload["v"] == 1
@@ -310,17 +357,12 @@ def test_a_cell_with_no_aeds_produces_no_file(build, feature):
 
 
 def test_finds_the_nearest_aed_the_way_the_watch_would(build, feature):
-    """Walks the whole chain the way the watch does, in one test.
+    """Walks the whole chain the way the watch does.
 
-    The other tests each check one link. This checks that the links
-    connect: build the tiles, take a GPS position, derive the filename
-    the way AedTiles.cellIndex does, open exactly that file, decode the
-    slots the way AedClient.parseEntries does, filter and sort the way
-    AedList does - and land on the AED a human would have picked.
-
-    A mismatch anywhere in that chain - a field in the wrong slot, a
-    swapped lat/lon, a cell key off by one - shows up here as the wrong
-    defibrillator rather than as a green suite and a confused user.
+    The other tests check one link each; this checks they connect. A
+    field in the wrong slot, a swapped lat/lon, a cell key off by one -
+    all show up here as the wrong defibrillator rather than as a green
+    suite and a confused user.
     """
     here_lat, here_lon = 52.2297, 21.0122
     out, _ = build([
