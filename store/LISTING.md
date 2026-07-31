@@ -1,0 +1,169 @@
+# Connect IQ store listing — AED Finder
+
+Everything the store form asks for, kept in the repository so the
+published listing and the app can't drift apart. Paste from here; edit
+here first.
+
+---
+
+## App name
+
+    AED Finder
+
+## Category
+
+Tools / Utility.
+
+## Icon
+
+`store/store_icon_dark.png` — 500×500, sRGB, no alpha.
+
+Use the dark one. The light variant exists in `make_icons.py` for
+comparison, but the mark doesn't survive it: the bolt is white and its
+tip and tail extend past the heart's silhouette, so on a white
+background both ends disappear and the bolt reads as a floating shard.
+
+Regenerate with `python tools/make_icons.py` — never edit the PNG.
+
+---
+
+## Short description (EN)
+
+> Points you to the nearest defibrillator. Rotating arrow, live
+> distance, and the details the arrow can't show — access, floor,
+> opening hours. Works offline. Poland only.
+
+## Full description (EN)
+
+> **A navigation aid, not a medical device. In an emergency call 112
+> first — the dispatcher knows where the nearest defibrillator is and
+> will talk you through using it. Send a second person to fetch it while
+> you stay and start compressions.**
+>
+> AED Finder shows an arrow to the nearest automated external
+> defibrillator and the distance in metres, updated as you move. It
+> buzzes once when it has locked onto one, and again when you arrive.
+>
+> A defibrillator is not a shop — you can stand next to the right
+> building and still not find it. So the app also shows what the arrow
+> can't: whether access is public or restricted, indoors or out, which
+> floor, the note describing which wall it hangs on, and the opening
+> hours of the building holding it. An AED behind a door that locked at
+> 18:00 is not a destination, and you should learn that before setting
+> off rather than on arrival.
+>
+> - Nearest defibrillator targeted automatically — no input needed
+> - Pick from the five nearest if the first one doesn't suit
+> - Warns you if you start walking away from your target
+> - Works without a phone: the last downloaded area is kept on the watch
+> - Arrow follows your GPS course while moving, the compass while still
+> - English and Polish
+>
+> **Coverage: Poland only.** Data comes from OpenAEDMap, the Polish
+> OpenStreetMap community's map of defibrillators. It is crowd-sourced,
+> so it may be incomplete, out of date, or wrong. Corrections belong in
+> OpenStreetMap, where they help everyone: openaedmap.org
+>
+> No accounts, no analytics, no tracking. Your position never leaves the
+> watch — the app downloads a map tile for a roughly 3 km grid cell and
+> does the search locally, so there is no server to send a position to.
+> Privacy policy:
+> https://github.com/barchojnow/AEDFinder/blob/main/PRIVACY.md
+>
+> Defibrillator data © OpenStreetMap contributors, ODbL 1.0.
+
+---
+
+> Note: unlike the on-device strings, these are rendered on a web page,
+> so they carry full Polish diacritics. The ASCII-only rule applies to
+> `resources-pol/strings/strings.xml` and nowhere else.
+
+## Short description (PL)
+
+> Prowadzi do najbliższego defibrylatora. Strzałka, odległość na żywo i
+> to, czego strzałka nie pokaże — dostęp, piętro, godziny otwarcia.
+> Działa offline. Tylko Polska.
+
+## Full description (PL)
+
+> **To pomoc w nawigacji, nie wyrób medyczny. W nagłym wypadku najpierw
+> zadzwoń na 112 — dyspozytor wie, gdzie jest najbliższy defibrylator, i
+> przeprowadzi cię przez jego użycie. Po AED poślij drugą osobę, a sam
+> zostań i zacznij uciskać klatkę piersiową.**
+>
+> AED Finder pokazuje strzałkę do najbliższego automatycznego
+> defibrylatora zewnętrznego (AED) i odległość w metrach, aktualizowaną w
+> trakcie marszu. Wibruje raz, gdy namierzy urządzenie, i drugi raz, gdy
+> dojdziesz na miejsce.
+>
+> Defibrylator to nie sklep — można stać pod właściwym budynkiem i wciąż
+> go nie znaleźć. Dlatego aplikacja pokazuje też to, czego strzałka nie
+> przekaże: czy dostęp jest publiczny czy ograniczony, wewnątrz czy na
+> zewnątrz, na którym piętrze, opis ściany, na której wisi, i godziny
+> otwarcia obiektu. AED za drzwiami zamkniętymi o 18:00 nie jest celem —
+> i lepiej dowiedzieć się tego przed wyjściem niż na miejscu.
+>
+> - Najbliższe AED namierzane automatycznie — bez żadnego dotknięcia
+> - Wybór z pięciu najbliższych, jeśli pierwsze nie pasuje
+> - Ostrzeżenie, gdy zaczynasz się oddalać od celu
+> - Działa bez telefonu: ostatnio pobrany obszar zostaje na zegarku
+> - Strzałka idzie za kursem GPS w ruchu, za kompasem w bezruchu
+> - Polski i angielski
+>
+> **Zasięg: tylko Polska.** Dane pochodzą z OpenAEDMap, mapy
+> defibrylatorów tworzonej przez polską społeczność OpenStreetMap. Są
+> zbierane społecznie, więc mogą być niepełne, nieaktualne lub błędne.
+> Poprawki zgłaszaj do OpenStreetMap, gdzie posłużą wszystkim:
+> openaedmap.org
+>
+> Bez kont, bez analityki, bez śledzenia. Twoja pozycja nie opuszcza
+> zegarka — aplikacja pobiera kafel mapy dla komórki siatki o boku około
+> 3 km i przeszukuje go lokalnie, więc nie ma serwera, do którego można
+> by wysłać pozycję. Polityka prywatności:
+> https://github.com/barchojnow/AEDFinder/blob/main/PRIVACY.md
+>
+> Dane o defibrylatorach © OpenStreetMap contributors, ODbL 1.0.
+
+---
+
+## Privacy policy URL
+
+    https://github.com/barchojnow/AEDFinder/blob/main/PRIVACY.md
+
+## Support URL
+
+    https://github.com/barchojnow/AEDFinder/issues
+
+---
+
+## Screenshots — to capture
+
+Must be real captures from the simulator or a watch; mock-ups of a
+medical-adjacent app would be both against the rules and dishonest.
+
+Capture at one large round device (Fenix 8 47 mm or Venu 3) and one
+small (Forerunner 55, 208 px) — the small one is where the layout is
+tightest and where anything wrong will show.
+
+1. **Waiting** — logo, "Call 112 first", grey arrow, "searching GPS...".
+   Proves the safety line is there before anything else happens.
+2. **Navigating** — red arrow, distance in metres, the access/hours line
+   above it. The screen the app exists for.
+3. **Arrived** — green arrow with the pulsing tip, small distance.
+4. **The list** — five nearest with distances and subtitles.
+5. **Details** — one AED with access, floor, hours and location note.
+
+Set the simulator position to somewhere dense before capturing:
+Warsaw centre, 52.2297 / 21.0122 → tile `pl/1740/700.json`.
+
+---
+
+## Before submitting
+
+- [ ] `Build AED tiles` has run since the grid moved to 0.03°, and
+      `https://barchojnow.github.io/AEDFinder/pl/1740/700.json` returns
+      real entries. Until then every user sees "no AED nearby".
+- [ ] `tools/run-tests.ps1` green — Monkey C and Python.
+- [ ] Installed from a `.iq`-adjacent build on your own watch and walked
+      to one real defibrillator. The simulator cannot tell you whether
+      the GPS course is usable at walking pace.

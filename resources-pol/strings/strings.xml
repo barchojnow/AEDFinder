@@ -13,6 +13,10 @@
     <string id="ErrorTimeout">blad: timeout</string>
     <string id="ErrorPrefix">blad: </string>
 
+    <string id="CallHelp">Najpierw zadzwon 112</string>
+    <!-- Nazwa wlasna - bez tlumaczenia. -->
+    <string id="Attribution">(c) OpenStreetMap</string>
+
     <string id="MenuTitle">Najblizsze AED</string>
     <string id="AedFallbackName">AED</string>
 

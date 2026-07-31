@@ -8,12 +8,13 @@ position.**
 One HTTP GET, to a static file on GitHub Pages:
 
 ```
-https://barchojnow.github.io/AEDFinder/pl/1044/420.json
+https://barchojnow.github.io/AEDFinder/pl/1740/700.json
 ```
 
 That path is the only thing derived from your location, and it is
-deliberately coarse: it names a grid cell roughly 5.5 km by 3.5 km, not
-a point. The request carries no coordinates, no query string, no
+deliberately coarse: it names a grid cell of 0.03° — about 3.3 km
+north–south and roughly 2 km east–west at Polish latitudes — not a
+point. The request carries no coordinates, no query string, no
 identifier, no account and no cookie. Every watch standing anywhere in
 that cell sends a byte-identical request.
 

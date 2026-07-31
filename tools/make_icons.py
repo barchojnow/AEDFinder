@@ -87,6 +87,35 @@ xsi:noNamespaceSchemaLocation="https://developer.garmin.com/downloads/connect-iq
 </drawables>
 """
 
+# Connect IQ store listing icon: 500x500, sRGB, at least 10 px of
+# padding. Generated from the same geometry as everything else rather
+# than exported by hand once - a store icon that drifts from the
+# launcher icon is the kind of thing nobody notices for a year.
+STORE_SIZE = 500
+STORE_PADDING = 40      # well past the 10 px floor; small icons need air
+
+STORE_BACKGROUNDS = {
+    # Matches the app, and stands out in a store grid of white tiles.
+    "dark": (18, 18, 18, 255),
+    # Safer against an unknown page background.
+    "light": (255, 255, 255, 255),
+}
+
+
+def draw_store_icon(background: tuple[int, int, int, int]) -> Image.Image:
+    """The launcher mark on an opaque square.
+
+    Opaque on purpose: the store composites onto its own page, and a
+    transparent PNG would leave the white bolt invisible wherever the
+    page happens to be light.
+    """
+    canvas = Image.new("RGBA", (STORE_SIZE, STORE_SIZE), background)
+    inner = STORE_SIZE - 2 * STORE_PADDING
+    mark = draw_mark(inner)
+    canvas.alpha_composite(mark, (STORE_PADDING, STORE_PADDING))
+    # sRGB, no alpha channel - what the store asks for.
+    return canvas.convert("RGB")
+
 
 def main() -> None:
     # Fallback, so an unmapped product still compiles.
@@ -115,6 +144,13 @@ xsi:noNamespaceSchemaLocation="https://developer.garmin.com/downloads/connect-iq
             DRAWABLES_XML.format(size=size), encoding="utf-8"
         )
         print(f"wrote variants/icon-{size}/drawables/launcher_icon_{size}.png")
+
+    store = ROOT / "store"
+    store.mkdir(exist_ok=True)
+    for name, background in STORE_BACKGROUNDS.items():
+        path = store / f"store_icon_{name}.png"
+        draw_store_icon(background).save(path)
+        print(f"wrote store/{path.name} ({STORE_SIZE}x{STORE_SIZE}, sRGB)")
 
 
 if __name__ == "__main__":

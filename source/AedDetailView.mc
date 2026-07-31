@@ -30,6 +30,7 @@ class AedDetailView extends WatchUi.View {
     private var strHours as Lang.String;
     private var strOffline as Lang.String;
     private var strUnknownLocation as Lang.String;
+    private var strAttribution as Lang.String;
 
     function initialize(aed as Lang.Dictionary, distance as Lang.Float,
                         fromCache as Lang.Boolean) {
@@ -49,6 +50,7 @@ class AedDetailView extends WatchUi.View {
         strHours = WatchUi.loadResource(Rez.Strings.Hours) as Lang.String;
         strOffline = WatchUi.loadResource(Rez.Strings.Offline) as Lang.String;
         strUnknownLocation = WatchUi.loadResource(Rez.Strings.UnknownLocation) as Lang.String;
+        strAttribution = WatchUi.loadResource(Rez.Strings.Attribution) as Lang.String;
     }
 
     function onUpdate(dc as Graphics.Dc) as Void {
@@ -124,8 +126,24 @@ class AedDetailView extends WatchUi.View {
         y = drawBlock(dc, cx, y + 6 * s, locText, Graphics.FONT_XTINY, locColor, s);
 
         if (fromCache) {
-            drawBlock(dc, cx, y + 4 * s, strOffline, Graphics.FONT_XTINY,
+            y = drawBlock(dc, cx, y + 4 * s, strOffline, Graphics.FONT_XTINY,
                 Graphics.COLOR_ORANGE, s);
+        }
+
+        // Attribution lives here rather than on the main screen. ODbL
+        // wants the credit to travel with the data and this is the
+        // screen that shows the most of it - while the main screen is
+        // read in the first seconds of an emergency, where a licence
+        // notice is just one more thing between the user and the arrow.
+        //
+        // Last, and only if it fits: on a 208 px watch a long location
+        // note can already reach the bottom, and losing the footnote is
+        // better than overprinting the sentence that tells you which
+        // wall the box is on.
+        var bottom = dc.getHeight() - dc.getFontHeight(Graphics.FONT_XTINY);
+        if (y + 4 * s < bottom) {
+            drawBlock(dc, cx, y + 4 * s, strAttribution, Graphics.FONT_XTINY,
+                Graphics.COLOR_DK_GRAY, s);
         }
     }
 

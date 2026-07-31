@@ -30,6 +30,7 @@ class AedRenderer {
     private var strAccessPrivate as Lang.String;
     private var strIndoor as Lang.String;
     private var strLevel as Lang.String;
+    private var strCallHelp as Lang.String;
 
     function initialize(view as AedFinderView) {
         self.view = view;
@@ -39,6 +40,7 @@ class AedRenderer {
         strAccessPrivate = WatchUi.loadResource(Rez.Strings.AccessPrivate) as Lang.String;
         strIndoor = WatchUi.loadResource(Rez.Strings.Indoor) as Lang.String;
         strLevel = WatchUi.loadResource(Rez.Strings.Level) as Lang.String;
+        strCallHelp = WatchUi.loadResource(Rez.Strings.CallHelp) as Lang.String;
     }
 
     function draw(dc as Graphics.Dc) as Void {
@@ -59,10 +61,26 @@ class AedRenderer {
             drawTargetInfo(dc, cx, s);
         } else {
             AedLogo.draw(dc, cx, 62 * s, 62 * s, Graphics.COLOR_RED);
+            drawCallForHelp(dc, cx, s);
         }
 
         drawArrow(dc, cx, cy, s);
         drawStatus(dc, cx, cy, s);
+    }
+
+    // One line, only until an AED is found - so it occupies seconds that
+    // were already going to be spent waiting for a GPS fix.
+    //
+    // Just the number. The dispatcher handles the rest, including
+    // telling you to send someone else; a watch screen is the wrong
+    // place to teach resuscitation, and a second line of instructions
+    // would push the whole layout into noise.
+    private function drawCallForHelp(dc as Graphics.Dc, cx as Lang.Float,
+                                     s as Lang.Float) as Void {
+        var y = 108 * s;
+        var f = TextFit.fitFont(dc, strCallHelp, 3, y, true);
+        dc.setColor(Graphics.COLOR_RED, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(cx, y, f, strCallHelp, Graphics.TEXT_JUSTIFY_CENTER);
     }
 
     // Access, placement and hours, condensed to at most two lines.

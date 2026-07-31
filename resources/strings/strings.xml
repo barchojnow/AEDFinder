@@ -17,6 +17,16 @@
     <string id="ErrorTimeout">error: timeout</string>
     <string id="ErrorPrefix">error: </string>
 
+    <!-- Under the logo until an AED is found. 112 is the EU-wide number
+         and the data is Poland-only, so it is always the right one. -->
+    <string id="CallHelp">Call 112 first</string>
+    <!-- Detail screen footer. "(c)" not "©": Garmin's built-in fonts are
+         unreliable outside ASCII, same reason the Polish strings carry
+         no diacritics. The licence is named in full in the store
+         listing and PRIVACY.md, which is where anyone asking the
+         question would look. -->
+    <string id="Attribution">(c) OpenStreetMap</string>
+
     <string id="MenuTitle">Nearest AEDs</string>
     <!-- Used when OSM has no note about where the device hangs. -->
     <string id="AedFallbackName">AED</string>
