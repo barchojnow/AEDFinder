@@ -30,6 +30,22 @@ SUPERSAMPLE = 8
 RED = (214, 40, 40, 255)
 BOLT = (255, 255, 255, 255)
 
+# The heart, as fractions of the mark's size. LOBE_* and TIP_DY are the
+# free parameters; TANGENT_* are derived from them and must be
+# recomputed if any of the others move.
+LOBE_R = 0.27
+LOBE_X = 0.24
+LOBE_DY = -0.16
+TIP_DY = 0.46
+TANGENT_X = 0.430510
+TANGENT_Y = 0.031327
+
+# The mark is drawn at 86% of the icon box. Not cosmetic breathing room:
+# the heart is 0.51 wide either side of centre, so at full size it would
+# reach past the edge - and some watches crop the launcher icon to a
+# circle, which takes the lobes off first.
+MARK_SCALE = 0.86
+
 
 def draw_mark(size: int) -> Image.Image:
     """Heart with a bolt punched out. Geometry mirrors AedLogo.draw()."""
@@ -39,13 +55,11 @@ def draw_mark(size: int) -> Image.Image:
 
     cx = s / 2.0
     cy = s / 2.0
-    # Some watches crop to a circle; a heart touching the edge loses
-    # its lobes.
-    scale = s * 0.86
+    scale = s * MARK_SCALE
 
-    lobe_r = 0.27 * scale
-    lobe_y = cy - 0.16 * scale
-    lobe_x = 0.24 * scale
+    lobe_r = LOBE_R * scale
+    lobe_y = cy + LOBE_DY * scale
+    lobe_x = LOBE_X * scale
 
     draw.ellipse(
         [cx - lobe_x - lobe_r, lobe_y - lobe_r,
@@ -57,10 +71,19 @@ def draw_mark(size: int) -> Image.Image:
          cx + lobe_x + lobe_r, lobe_y + lobe_r],
         fill=RED,
     )
+    # The V meets the lobes at their tangent points, so the silhouette
+    # has no step where circle becomes straight edge. The middle vertex
+    # is at lobe-centre height: below y = -0.036 the circles stop
+    # overlapping, and a straight edge between the tangent points
+    # (y = +0.031) would leave a hole in the cleavage.
+    #
+    # tools/test_logo_geometry.py rederives TANGENT_* from the lobe
+    # constants and checks AedLogo.mc carries the same numbers.
     draw.polygon(
         [
-            (cx - (lobe_x + lobe_r) + 0.02 * scale, lobe_y + 0.04 * scale),
-            (cx + (lobe_x + lobe_r) - 0.02 * scale, lobe_y + 0.04 * scale),
+            (cx - TANGENT_X * scale, cy + TANGENT_Y * scale),
+            (cx, lobe_y),
+            (cx + TANGENT_X * scale, cy + TANGENT_Y * scale),
             (cx, cy + 0.46 * scale),
         ],
         fill=RED,

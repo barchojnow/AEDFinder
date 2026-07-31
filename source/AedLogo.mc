@@ -12,6 +12,19 @@ module AedLogo {
 
     // All offsets are fractions of `size`, so proportions hold at any
     // scale from a 208 px Forerunner to a 454 px Fenix.
+    //
+    // The V meets the lobes at their TANGENT POINTS, not at an arbitrary
+    // inset. Anywhere else and the circle bulges past the straight edge,
+    // leaving a step in the silhouette that is obvious at 500 px and
+    // just looks like a bad render at 35.
+    //
+    // TANGENT_X/Y are derived from the four constants below - see
+    // tools/test_logo_geometry.py, which recomputes them and fails if
+    // anyone retunes a lobe without retuning these. Precomputed rather
+    // than solved here because draw() runs on every compass event.
+    const TANGENT_X = 0.430510;
+    const TANGENT_Y = 0.031327;
+
     function draw(dc as Graphics.Dc, cx as Lang.Float, cy as Lang.Float,
                   size as Lang.Float, color as Graphics.ColorType) as Void {
         dc.setColor(color, Graphics.COLOR_TRANSPARENT);
@@ -22,9 +35,14 @@ module AedLogo {
 
         dc.fillCircle(cx - lobeX, lobeY, lobeR);
         dc.fillCircle(cx + lobeX, lobeY, lobeR);
+        // The middle vertex sits at lobe-centre height. Below y = -0.036
+        // the two circles no longer overlap, so a straight edge between
+        // the tangent points (y = +0.031) would leave the cleavage
+        // unfilled - a hole punched through the middle of the heart.
         dc.fillPolygon([
-            [cx - (lobeX + lobeR) + 0.02 * size, lobeY + 0.04 * size],
-            [cx + (lobeX + lobeR) - 0.02 * size, lobeY + 0.04 * size],
+            [cx - TANGENT_X * size, cy + TANGENT_Y * size],
+            [cx, lobeY],
+            [cx + TANGENT_X * size, cy + TANGENT_Y * size],
             [cx, cy + 0.46 * size]
         ]);
 

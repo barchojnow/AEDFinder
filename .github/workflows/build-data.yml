@@ -30,10 +30,18 @@ permissions:
   pages: write
   id-token: write
 
-# Never let two builds deploy at once; the newest data wins.
+# Never let two builds deploy at once.
+#
+# cancel-in-progress is false on purpose, and this is the one setting
+# here worth arguing about. Cancelling sounds right - the newest data
+# should win - but it kills the whole run including the deploy job, so
+# a second trigger arriving mid-publish leaves the previous tiles up and
+# the new ones nowhere. Nothing goes red: the cancelled run reports as
+# cancelled, not failed, and Pages keeps serving whatever it had.
+# GitHub's own Pages template makes the same choice.
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:

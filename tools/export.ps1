@@ -68,8 +68,16 @@ $localGrid = (Get-Content (Join-Path $project 'tools\build_tiles.py') |
     Select-String -Pattern '^CELL_DEG\s*=\s*([\d.]+)').Matches[0].Groups[1].Value
 
 try {
-    $live = Invoke-RestMethod -Uri 'https://barchojnow.github.io/AEDFinder/meta.json' `
-                              -TimeoutSec 20
+    # The query string is load-bearing. GitHub Pages sits behind a CDN
+    # and corporate proxies cache aggressively, so a bare GET here
+    # happily returns yesterday's meta.json long after the deploy has
+    # landed - which turns this guard into a machine for blocking
+    # perfectly good releases. That is not hypothetical: it is how this
+    # check was first written, and it reported a stale grid for a deploy
+    # that had already succeeded.
+    $bust = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+    $live = Invoke-RestMethod -TimeoutSec 20 -Headers @{ 'Cache-Control' = 'no-cache' } `
+                -Uri "https://barchojnow.github.io/AEDFinder/meta.json?t=$bust"
     $liveGrid = $live.grid.cellDeg
     if ("$liveGrid" -ne "$localGrid") {
         $message = @"

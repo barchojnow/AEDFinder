@@ -42,6 +42,23 @@ def test_the_grid_regex_still_finds_the_constant():
     assert float(found.group(1)) == bt.CELL_DEG
 
 
+def test_the_freshness_check_defeats_caching():
+    """A cached response makes this guard lie in the worst direction.
+
+    Pages is behind a CDN and proxies cache on top of that, so a bare
+    GET can return the previous deploy's meta.json for a long time after
+    the new one is live. The guard then blocks a release that is
+    perfectly fine - which happened, and cost more trust than the check
+    was worth. The query string is what makes the answer current.
+    """
+    fetch = [l for l in SCRIPT.splitlines() if "meta.json" in l]
+    assert fetch, "export.ps1 no longer fetches meta.json"
+    assert any("?t=$" in l or "?t=" in l for l in fetch), (
+        "the meta.json fetch has no cache-busting query string, so it can "
+        "block a release on data that is already published"
+    )
+
+
 def test_it_checks_the_published_metadata():
     assert "meta.json" in SCRIPT, (
         "export.ps1 no longer fetches the published meta.json, so a "

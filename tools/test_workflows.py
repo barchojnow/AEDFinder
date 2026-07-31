@@ -117,6 +117,29 @@ def test_the_data_build_commits_something():
     )
 
 
+@pytest.mark.parametrize("path", WORKFLOWS, ids=lambda p: p.name)
+def test_a_deploying_workflow_does_not_cancel_itself(path):
+    """A cancelled deploy fails silently.
+
+    cancel-in-progress kills the whole run, deploy job included, and
+    reports "cancelled" rather than "failed" - so the tiles stay
+    unpublished and no notification fires. Whatever was live keeps being
+    served, which is the worst shape of failure: the app still works,
+    just against stale data.
+    """
+    spec = load(path)
+    deploys = any(
+        "deploy-pages" in (s.get("uses") or "") for s in steps(spec)
+    )
+    if not deploys:
+        return
+    concurrency = spec.get("concurrency") or {}
+    assert concurrency.get("cancel-in-progress") is not True, (
+        f"{path.name} deploys to Pages but cancels in-progress runs; a "
+        f"cancelled deploy leaves the old data live and reports no failure"
+    )
+
+
 def test_ci_runs_on_every_push_with_no_path_filter():
     """The grid guard must fire on the change it guards.
 
