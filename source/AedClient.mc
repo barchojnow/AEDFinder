@@ -65,7 +65,7 @@ class AedClient {
         var options = {
             :method => Communications.HTTP_REQUEST_METHOD_GET,
             :headers => {
-                "User-Agent" => "AEDFinder-GarminWidget/1.0 (open-source hobby project)"
+                "User-Agent" => "AEDFinder/1.0 (+https://github.com/barchojnow/AEDFinder)"
             },
             :responseType => Communications.HTTP_RESPONSE_CONTENT_TYPE_JSON
         };

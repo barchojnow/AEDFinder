@@ -91,7 +91,7 @@ COUNTRY_URL = "https://openaedmap.org/api/v1/countries/{code}.geojson"
 USER_AGENT = "AEDFinder-TileBuilder/1.0 (+https://github.com/barchojnow/AEDFinder)"
 
 # Free text is truncated because it is drawn on a 208-454 px round
-# screen and held in a memory-starved widget. Anything longer is
+# screen and held in a memory-starved app. Anything longer is
 # unreadable on the watch anyway.
 MAX_LOCATION_CHARS = 60
 MAX_HOURS_CHARS = 24

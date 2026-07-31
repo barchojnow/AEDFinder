@@ -158,7 +158,7 @@ module ProximityAlertsTest {
     // --- the walking-away prompt -----------------------------------------
 
     // Only a manually picked target can trigger it: in automatic mode
-    // the widget simply retargets, so there is no choice to defend.
+    // the app simply retargets, so there is no choice to defend.
     (:test)
     function autoTargetNeverRaisesTheAwayPrompt(logger as Test.Logger) as Lang.Boolean {
         var f = new Fixture();
