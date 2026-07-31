@@ -20,6 +20,10 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
+          # Required: setup-python's default glob is requirements.txt or
+          # pyproject.toml, and it errors out rather than skipping the
+          # cache when neither exists.
+          cache-dependency-path: requirements-dev.txt
 
       - run: pip install -r requirements-dev.txt
 

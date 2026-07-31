@@ -8,6 +8,11 @@
 
 pytest==9.1.1
 
+# Only for tools/test_workflows.py, which parses the Actions YAML
+# locally so a workflow mistake doesn't cost a round trip through
+# GitHub to discover.
+pyyaml>=6.0
+
 # Only for tools/make_icons.py, which regenerates the launcher icons.
 # Not run in CI - the PNGs are committed.
 pillow>=10.0
