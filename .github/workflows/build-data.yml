@@ -25,7 +25,8 @@ on:
       - ".github/workflows/build-data.yml"
 
 permissions:
-  contents: read
+  # write, so the build can commit meta.json - see "Record the build".
+  contents: write
   pages: write
   id-token: write
 
@@ -81,6 +82,40 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
+
+      - name: Record the build
+        # Commits meta.json - roughly 300 bytes, no tiles - for two
+        # reasons.
+        #
+        # The load-bearing one: GitHub disables scheduled workflows in a
+        # public repository after 60 days with no COMMIT activity, and
+        # nothing else resets that clock - not tags, not issues, not
+        # merged pull requests. A finished hobby app easily goes two
+        # months without a commit, and the nightly rebuild would then
+        # stop with nothing going red. The app would keep serving
+        # whatever was last published, quietly getting more wrong.
+        #
+        # The pleasant side effect: the file's git history becomes a
+        # record of how AED coverage in Poland grows.
+        run: |
+          cp _site/meta.json meta.json
+          # --porcelain, not `git diff`: diff ignores untracked files, so
+          # the very first run would report "unchanged" and never create
+          # the file at all.
+          if [ -z "$(git status --porcelain meta.json)" ]; then
+            echo "meta.json unchanged - nothing to commit"
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git pull --rebase --autostash origin main
+          git add meta.json
+          # Single-quoted shell string, double quotes inside Python: no
+          # escaping anywhere, because a quoting mistake here would only
+          # surface at 03:40 in a run nobody is watching.
+          SUMMARY=$(python -c 'import json; m = json.load(open("meta.json")); print(m["aedCount"], "AEDs,", m["cellCount"], "cells")')
+          git commit -m "data: $SUMMARY"
+          git push
 
   deploy:
     needs: build

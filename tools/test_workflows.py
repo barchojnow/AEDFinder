@@ -87,6 +87,36 @@ def test_referenced_repository_files_exist(path):
     assert not missing, f"{path.name} references missing files: {missing}"
 
 
+@pytest.mark.parametrize("path", WORKFLOWS, ids=lambda p: p.name)
+def test_a_workflow_that_pushes_can_write(path):
+    """`git push` without contents: write fails at the last step."""
+    spec = load(path)
+    pushes = any("git push" in (s.get("run") or "") for s in steps(spec))
+    if not pushes:
+        return
+    assert spec.get("permissions", {}).get("contents") == "write", (
+        f"{path.name} runs `git push` but does not request contents: write"
+    )
+
+
+def test_the_data_build_commits_something():
+    """The nightly rebuild has to keep its own schedule alive.
+
+    GitHub disables scheduled workflows in a public repository after 60
+    days with no commit activity, and only commits reset that clock. If
+    this step ever goes away, the rebuild stops after two quiet months
+    and nothing anywhere turns red.
+    """
+    data = next(
+        (p for p in WORKFLOWS if load(p).get("name") == "Build AED tiles"), None
+    )
+    assert data is not None, "no workflow named 'Build AED tiles'"
+    assert any("git push" in (s.get("run") or "") for s in steps(load(data))), (
+        "the data build no longer commits anything, so its own schedule "
+        "will be disabled after 60 days of repository silence"
+    )
+
+
 def test_ci_runs_on_every_push_with_no_path_filter():
     """The grid guard must fire on the change it guards.
 
