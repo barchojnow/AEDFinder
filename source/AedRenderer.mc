@@ -28,7 +28,6 @@ class AedRenderer {
     private var strAwayHint as Lang.String;
     private var strOffline as Lang.String;
     private var strAccessPrivate as Lang.String;
-    private var strAccessCustomers as Lang.String;
     private var strIndoor as Lang.String;
     private var strLevel as Lang.String;
 
@@ -38,7 +37,6 @@ class AedRenderer {
         strAwayHint = WatchUi.loadResource(Rez.Strings.AwayHint) as Lang.String;
         strOffline = WatchUi.loadResource(Rez.Strings.Offline) as Lang.String;
         strAccessPrivate = WatchUi.loadResource(Rez.Strings.AccessPrivate) as Lang.String;
-        strAccessCustomers = WatchUi.loadResource(Rez.Strings.AccessCustomers) as Lang.String;
         strIndoor = WatchUi.loadResource(Rez.Strings.Indoor) as Lang.String;
         strLevel = WatchUi.loadResource(Rez.Strings.Level) as Lang.String;
     }
@@ -72,16 +70,17 @@ class AedRenderer {
                                     s as Lang.Float) as Void {
         var t = view.currentTarget() as Lang.Dictionary;
 
-        // Orange because restricted access changes the decision.
+        // Only genuinely restricted access earns the orange line.
+        // access=customers is NOT a barrier - in a mall or a shop that
+        // is anyone who walked in, and nobody is turned away during a
+        // cardiac arrest. Flagging it here would warn about a
+        // non-problem while drawing attention away from the real gate,
+        // which is the opening hours on the line below.
         var access = t[:access] as Lang.String or Null;
         var accessText = "";
-        var accessColor = Graphics.COLOR_LT_GRAY;
+        var accessColor = Graphics.COLOR_ORANGE;
         if (access != null && access.equals("p")) {
             accessText = strAccessPrivate;
-            accessColor = Graphics.COLOR_ORANGE;
-        } else if (access != null && access.equals("c")) {
-            accessText = strAccessCustomers;
-            accessColor = Graphics.COLOR_ORANGE;
         }
 
         // Line 2: where exactly, plus opening hours when tagged.

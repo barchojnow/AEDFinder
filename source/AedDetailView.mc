@@ -67,8 +67,11 @@ class AedDetailView extends WatchUi.View {
         y = drawBlock(dc, cx, y + 2 * s, distance.format("%.0f") + " m",
             Graphics.FONT_MEDIUM, Graphics.COLOR_RED, s);
 
-        // Orange, not red: the AED is still there, you may just have
-        // to ask someone.
+        // Only `private` is a warning. `customers` is white because it
+        // describes where the device lives, not whether you may take it
+        // - in a mall that is anyone who walked in, and the real gate is
+        // the opening hours below. Orange rather than red even for
+        // private: the AED is there, you may just have to ask someone.
         var access = aed[:access] as Lang.String or Null;
         var accessText = strAccessUnknown;
         var accessColor = Graphics.COLOR_LT_GRAY;
@@ -78,7 +81,7 @@ class AedDetailView extends WatchUi.View {
                 accessColor = Graphics.COLOR_GREEN;
             } else if (access.equals("c")) {
                 accessText = strAccessCustomers;
-                accessColor = Graphics.COLOR_ORANGE;
+                accessColor = Graphics.COLOR_WHITE;
             } else if (access.equals("p")) {
                 accessText = strAccessPrivate;
                 accessColor = Graphics.COLOR_ORANGE;

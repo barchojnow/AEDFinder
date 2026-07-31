@@ -23,11 +23,14 @@
 
     <string id="DetailTitle">DEFIBRYLATOR</string>
     <string id="AccessPublic">dostep publiczny</string>
-    <string id="AccessCustomers">tylko dla klientow</string>
+    <!-- access=customers to "moga wziac klienci" - w galerii handlowej
+         klientem jest kazdy, kto wszedl. Opisujemy polozenie, nie
+         pozwolenie: realna bramka to godziny otwarcia. -->
+    <string id="AccessCustomers">wewnatrz obiektu</string>
     <string id="AccessPrivate">dostep ograniczony</string>
     <string id="AccessUnknown">dostep nieznany</string>
     <!-- Krotkie formy do jednoliniowego podtytulu w Menu2. -->
-    <string id="AccessShortCustomers">klienci</string>
+    <string id="AccessShortCustomers">w obiekcie</string>
     <string id="AccessShortPrivate">ograniczony</string>
     <string id="Indoor">wewnatrz</string>
     <string id="Outdoor">na zewnatrz</string>
