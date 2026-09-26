@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generated": "2026-09-25T09:04:41Z",
+  "generated": "2026-09-26T08:49:04Z",
   "source": "OpenAEDMap / OpenStreetMap contributors, ODbL 1.0",
   "countries": [
     "pl"
@@ -12,8 +12,8 @@
     "searchRadiusM": 1500
   },
   "maxTileEntries": 70,
-  "aedCount": 17357,
-  "cellCount": 22853,
+  "aedCount": 17361,
+  "cellCount": 22860,
   "cappedTiles": 88,
   "droppedEntryCopies": 5223
 }
